@@ -1,0 +1,63 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Vite build output
+dist/
+
+# Vite cache
+.vite
+.vite/
+
+# Editor settings
+.idea/
+.vscode/
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.swp
+*.tmp
+*.temp
+*.log
+*.out
+*.pid
+
+# TypeScript build output
+*.tsbuildinfo
+
+# Testing
+coverage/
+*.lcov
+
+# Mac-specific files
+.AppleDouble
+.LSOverride
+
+# Linux-specific files
+*~
+
+# Windows-specific files
+*.lnk
+
+# Other tools
+.eslintcache
+.stylelintcache
+
+# Package manager lock files (optional, if not used)
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
