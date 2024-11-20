@@ -101,7 +101,7 @@ export default function PrimarySearchAppBar() {
   );
 
   return (
-    <Box sx={{ flexGrow: 1, width: "100vw", margin: 0, padding: 0 }}>
+    <Box sx={{ flexGrow: 1, width: "99.2vw", margin: 0, padding: 0 }}>
       <AppBar
         position="static"
         sx={{ margin: 0, padding: 0, boxShadow: "none", width: "100%" }}
@@ -113,7 +113,7 @@ export default function PrimarySearchAppBar() {
             component="div"
             sx={{ display: { xs: "none", sm: "block" } }}
           >
-            Previsiones
+            Facturación
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: "none", md: "flex" } }}>

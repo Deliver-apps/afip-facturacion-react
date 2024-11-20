@@ -23,7 +23,6 @@ export const getUsers = async () => {
     const response = await axios.get(
       `${config.apiUrl}api/users?external=${external}`,
     );
-    console.log(response.data);
     return response.data;
   } catch (error) {
     console.error("Error getting Users: ", error);

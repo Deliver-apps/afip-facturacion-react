@@ -17,6 +17,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { Autocomplete } from "@mui/material";
 import { getUsers } from "@src/api/users";
 import { createFactura } from "@src/api/facturacion";
+import { showErrorToast, showSuccessToast } from "@src/helpers/toastifyCustom";
 
 // Define the User type based on the expected structure from the "users" endpoint
 interface User {
@@ -25,12 +26,17 @@ interface User {
   username: string;
 }
 
-const BillForm: React.FC = () => {
+interface Props {
+  updateCards: boolean;
+  setUpdateCards: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [usersError, setUsersError] = useState<string>("");
 
-  const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [valorMinimo, setValorMinimo] = useState<string>("");
   const [valorMaximo, setValorMaximo] = useState<string>("");
   const [minHour, setMinHour] = useState<number>(9);
@@ -93,19 +99,23 @@ const BillForm: React.FC = () => {
     };
 
     createFactura(parsedData)
-      .then(async (data) => {
-        setSelectedUser(undefined);
+      .then(() => {
+        showSuccessToast("Factura Creada Correctamente", "top-right", 2000);
+        setSelectedUser(null);
         setFacturasTotales("");
         setFormError("");
-        console.log("Data:", data);
+        setTimeout(() => {
+          setUpdateCards(true);
+        }, 1000);
       })
       .catch((error) => {
+        showErrorToast("Error al crear factura", "top-right", 2000);
         console.error("Error:", error);
       });
   };
 
   const handleCancel = () => {
-    setSelectedUser(undefined);
+    setSelectedUser(null);
     setValorMinimo("");
     setValorMaximo("");
     setFacturasTotales("");
