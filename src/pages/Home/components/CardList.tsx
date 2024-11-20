@@ -16,6 +16,7 @@ import * as _ from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
 import ReplayIcon from "@mui/icons-material/Replay";
+import { getUsers } from "@src/api/users";
 
 const HoverCard = styled(Card)({
   transition: "transform 0.3s ease",
@@ -34,11 +35,18 @@ interface Job {
   cronExpression: string;
 }
 
+interface User {
+  id: number;
+  real_name: string;
+  username: string;
+}
+
 const CardList: React.FC = () => {
   const [groupedJobs, setGroupedJobs] = useState<Record<number, Job[]>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentOpenDialog, setCurrentOpenDialog] = useState(0);
+  const [users, setUsers] = useState<User[]>([]);
   const itemsPerPage = 40;
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -61,9 +69,11 @@ const CardList: React.FC = () => {
       minimumFractionDigits: 2,
     }).format(total);
 
+    const user = users.find((user) => user.id === Number(key));
+    console.log(users, key);
     return {
       id: key,
-      title: `Fact. ${monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)} (User: ${key})`,
+      title: `Fact. ${monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)} (Cuit: ${user?.username})`,
       content: `Cant. Facturas: ${value.length}`,
       total: `Total: ${formattedTotal}`,
     };
@@ -103,6 +113,16 @@ const CardList: React.FC = () => {
   };
 
   useEffect(() => {
+    getUsers()
+      .then((data) => {
+        setUsers(data);
+      })
+      .catch((error) => {
+        console.error("Error fetching users:", error);
+      });
+  }, []);
+
+  useEffect(() => {
     getFacturas()
       .then((data: Job[]) => {
         const groupedData = _.groupBy(data, "userId");
@@ -119,7 +139,7 @@ const CardList: React.FC = () => {
     } else {
       setCurrentOpenDialog(0);
     }
-  }, [openDialog]);
+  }, [currentOpenDialog, openDialog]);
 
   const filterByKey = (key: number) => {
     return groupedJobs[key] || [];
@@ -213,7 +233,7 @@ const CardList: React.FC = () => {
             onClick={() => handleOpenDialog(item.id)}
           >
             <CardContent>
-              <Typography variant="h6" component="div">
+              <Typography variant="subtitle2" component="div">
                 {item.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">

@@ -1,14 +1,8 @@
-// src/components/BillForm.tsx
-
 import React, { useEffect, useState } from "react";
 import {
   Box,
   Stack,
   TextField,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
   Button,
   IconButton,
   InputAdornment,
@@ -20,6 +14,7 @@ import { Shuffle } from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { Autocomplete } from "@mui/material";
 import { getUsers } from "@src/api/users";
 import { createFactura } from "@src/api/facturacion";
 
@@ -27,16 +22,15 @@ import { createFactura } from "@src/api/facturacion";
 interface User {
   id: number;
   real_name: string;
+  username: string;
 }
 
 const BillForm: React.FC = () => {
-  // State for users fetched from the endpoint
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [usersError, setUsersError] = useState<string>("");
 
-  // Form state
-  const [selectedUser, setSelectedUser] = useState<number | "">("");
+  const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [valorMinimo, setValorMinimo] = useState<string>("");
   const [valorMaximo, setValorMaximo] = useState<string>("");
   const [minHour, setMinHour] = useState<number>(9);
@@ -48,44 +42,39 @@ const BillForm: React.FC = () => {
   );
   const [selectedDateFin, setSelectedDateFin] = useState<Date | null>(null);
 
-  // Fetch users from the "users" endpoint
   useEffect(() => {
     setLoadingUsers(true);
     getUsers()
-      .then((data) => {
-        setUsers(data);
-      })
+      .then((data) => setUsers(data))
       .catch((error) => {
         console.error("Error fetching users:", error);
         setFormError("Error al cargar usuarios");
       })
-      .finally(() => {
-        setLoadingUsers(false);
-      });
+      .finally(() => setLoadingUsers(false));
   }, []);
 
-  // Handler for generating a random number between 20 and 35
   const handleRandomFacturas = () => {
-    const min = parseFloat(valorMaximo) * 0.00013; // 0.015%
-    const max = parseFloat(valorMaximo) * 0.00015; // 0.016%
-
+    const min = parseFloat(valorMaximo) * 0.00013;
+    const max = parseFloat(valorMaximo) * 0.00015;
     const randomNumber = Math.random() * (max - min) + min;
-
     setFacturasTotales(Math.floor(randomNumber) + 1);
   };
 
-  // Handler for form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic Validation
     if (Number(valorMinimo) > Number(valorMaximo)) {
       setFormError('"Valor mínimo" should not exceed "Valor máximo".');
       setUsersError("");
       return;
     }
 
-    // Reset form error if any
+    if (!selectedUser) {
+      setFormError("Seleccione un usuario.");
+      setUsersError("");
+      return;
+    }
+
     setFormError("");
     const today = new Date();
     const tomorrow = new Date(today);
@@ -94,9 +83,8 @@ const BillForm: React.FC = () => {
     const formatedDateInicio = `${dateInit.getFullYear()}-${dateInit.getMonth() + 1}-${dateInit.getDate()}`;
     const formatedDateFin = `${selectedDateFin?.getFullYear()}-${selectedDateFin?.getMonth() || 0 + 1}-${selectedDateFin?.getDate()}`;
 
-    // Proceed with form submission
     const parsedData = {
-      userId: Number(selectedUser),
+      userId: selectedUser?.id,
       minBill: Number(valorMinimo),
       maxBill: Number(valorMaximo),
       billNumber: Number(facturasTotales),
@@ -106,7 +94,7 @@ const BillForm: React.FC = () => {
 
     createFactura(parsedData)
       .then(async (data) => {
-        setSelectedUser("");
+        setSelectedUser(undefined);
         setFacturasTotales("");
         setFormError("");
         console.log("Data:", data);
@@ -114,20 +102,16 @@ const BillForm: React.FC = () => {
       .catch((error) => {
         console.error("Error:", error);
       });
-
-    console.log("Form Data:", parsedData);
-    // You can send formData to your backend or perform other actions
   };
 
-  // Handler for form cancellation
   const handleCancel = () => {
-    // Reset form fields
-    setSelectedUser("");
+    setSelectedUser(undefined);
     setValorMinimo("");
     setValorMaximo("");
     setFacturasTotales("");
     setFormError("");
   };
+
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
@@ -139,7 +123,6 @@ const BillForm: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      {/* <LocalizationProvider> */}
       <Box
         sx={{
           maxWidth: 600,
@@ -172,26 +155,30 @@ const BillForm: React.FC = () => {
         {!loadingUsers && !usersError && (
           <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
-              {/* Form Error */}
               {formError && <Alert severity="error">{formError}</Alert>}
 
-              {/* User Dropdown */}
-              <FormControl fullWidth required>
-                <InputLabel id="user-select-label">Usuario</InputLabel>
-                <Select
-                  labelId="user-select-label"
-                  id="user-select"
-                  value={selectedUser}
-                  label="Select User"
-                  onChange={(e) => setSelectedUser(e.target.value as number)}
-                >
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.id} - {user.real_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* User Dropdown with Search */}
+              <Autocomplete
+                fullWidth
+                options={users}
+                getOptionLabel={(user) =>
+                  `${user.id} - ${user.real_name} - ${user.username}`
+                }
+                value={selectedUser}
+                onChange={(event, newValue) => setSelectedUser(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Usuario"
+                    variant="outlined"
+                    required
+                  />
+                )}
+                isOptionEqualToValue={(option, value) =>
+                  option.id === value?.id
+                }
+                disableClearable
+              />
 
               {/* Valor Mínimo and Valor Máximo */}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
@@ -200,36 +187,26 @@ const BillForm: React.FC = () => {
                   type="number"
                   fullWidth
                   required
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
-                    },
-                    htmlInput: {
-                      min: 0,
-                    },
-                  }}
                   value={valorMinimo}
                   onChange={(e) => setValorMinimo(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
+                  }}
                 />
                 <TextField
                   label="Monto máximo"
                   type="number"
                   fullWidth
                   required
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
-                    },
-                    htmlInput: {
-                      min: 0,
-                    },
-                  }}
                   value={valorMaximo}
                   onChange={(e) => setValorMaximo(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
+                  }}
                 />
               </Stack>
 
@@ -242,123 +219,77 @@ const BillForm: React.FC = () => {
                   required
                   disabled
                   value={facturasTotales}
-                  onChange={(e) => setFacturasTotales(Number(e.target.value))}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconButton
-                            onClick={handleRandomFacturas}
-                            edge="start"
-                            disabled={
-                              valorMinimo === "" ||
-                              valorMaximo === "" ||
-                              valorMinimo > valorMaximo ||
-                              valorMinimo === "0" ||
-                              valorMaximo === "0"
-                            }
-                          >
-                            <Shuffle
-                              sx={{
-                                color:
-                                  valorMinimo === "" ||
-                                  valorMaximo === "" ||
-                                  valorMinimo > valorMaximo ||
-                                  valorMinimo === "0" ||
-                                  valorMaximo === "0"
-                                    ? "grey"
-                                    : "primary.main",
-                                fontSize: "1.5rem",
-                              }}
-                            />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                      inputProps: { min: 0 },
-                    },
-                  }}
-                />
-              </Stack>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
-                <DatePicker
-                  label="Fecha Inicio"
-                  onChange={(newValue) => setSelectedDateInicio(newValue)}
-                  format="dd/MM/yyyy"
-                  slots={{
-                    textField: TextField,
-                  }}
-                  defaultValue={tomorrow}
-                  minDate={tomorrow}
-                  slotProps={{
-                    textField: {
-                      inputProps: {
-                        required: true,
-                      },
-                    },
-                  }}
-                />
-                <DatePicker
-                  label="Fecha Fin"
-                  onChange={(newValue) => setSelectedDateFin(newValue)}
-                  format="dd/MM/yyyy"
-                  minDate={nextDay}
-                  maxDate={maxDayFromCurrentMonth}
-                  slots={{
-                    textField: TextField,
-                  }}
-                  slotProps={{
-                    textField: {
-                      inputProps: {
-                        required: true,
-                      },
-                    },
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconButton
+                          onClick={handleRandomFacturas}
+                          edge="start"
+                          disabled={
+                            !valorMinimo ||
+                            !valorMaximo ||
+                            Number(valorMinimo) > Number(valorMaximo)
+                          }
+                        >
+                          <Shuffle />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
                 />
               </Stack>
 
+              {/* Date Pickers */}
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
+                <DatePicker
+                  label="Fecha Inicio"
+                  value={selectedDateInicio}
+                  onChange={(newValue) => setSelectedDateInicio(newValue)}
+                  format="dd/MM/yyyy"
+                  minDate={tomorrow}
+                />
+                <DatePicker
+                  label="Fecha Fin"
+                  value={selectedDateFin}
+                  onChange={(newValue) => setSelectedDateFin(newValue)}
+                  format="dd/MM/yyyy"
+                  minDate={nextDay}
+                  maxDate={maxDayFromCurrentMonth}
+                />
+              </Stack>
+
+              {/* Hours */}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
                 <TextField
                   label="Hora Inicio"
                   type="number"
                   fullWidth
                   value={minHour}
-                  slotProps={{
-                    htmlInput: {
-                      min: 0,
-                      max: 23,
-                    },
-                  }}
                   onChange={(e) => setMinHour(Number(e.target.value))}
+                  inputProps={{ min: 0, max: 23 }}
                 />
                 <TextField
                   label="Hora Fin"
                   type="number"
                   fullWidth
-                  required
                   value={maxHour}
-                  slotProps={{
-                    htmlInput: {
-                      min: 0,
-                      max: 23,
-                    },
-                  }}
                   onChange={(e) => setMaxHour(Number(e.target.value))}
+                  inputProps={{ min: 0, max: 23 }}
                 />
               </Stack>
 
+              {/* Buttons */}
               <Box display="flex" justifyContent="flex-end" gap={2}>
                 <Button
                   variant="contained"
                   color="primary"
                   type="submit"
                   disabled={
-                    selectedUser === "" ||
-                    valorMinimo === "" ||
-                    valorMaximo === "" ||
-                    valorMaximo < valorMinimo ||
-                    valorMinimo === "0" ||
-                    valorMaximo === "0" ||
-                    facturasTotales === ""
+                    !selectedUser ||
+                    !valorMinimo ||
+                    !valorMaximo ||
+                    Number(valorMaximo) < Number(valorMinimo) ||
+                    !facturasTotales
                   }
                 >
                   Accept
@@ -372,7 +303,6 @@ const BillForm: React.FC = () => {
                 </Button>
               </Box>
             </Stack>
-            {/* Buttons */}
           </form>
         )}
       </Box>
