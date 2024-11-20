@@ -16,6 +16,7 @@ import * as _ from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
 import ReplayIcon from "@mui/icons-material/Replay";
+import { getUsers } from "@src/api/users";
 
 const HoverCard = styled(Card)({
   transition: "transform 0.3s ease",
@@ -34,40 +35,56 @@ interface Job {
   cronExpression: string;
 }
 
-const CardList: React.FC = () => {
+interface User {
+  id: number;
+  real_name: string;
+  username: string;
+}
+interface Props {
+  updateCards: boolean;
+  setUpdateCards: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   const [groupedJobs, setGroupedJobs] = useState<Record<number, Job[]>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentOpenDialog, setCurrentOpenDialog] = useState(0);
+  const [users, setUsers] = useState<User[]>([]);
   const itemsPerPage = 40;
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const items = Object.entries(groupedJobs).map(([key, value]) => {
-    const total = value.reduce(
-      (acc, curr) => acc + parseFloat(curr.valueToBill),
-      0,
-    );
+  const items = React.useMemo(() => {
+    return Object.entries(groupedJobs).map(([key, value]) => {
+      const total = value.reduce(
+        (acc, curr) => acc + parseFloat(curr.valueToBill),
+        0,
+      );
 
-    const lastJob = value[value.length - 1];
-    const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString(
-      "es-AR",
-      {
-        month: "long",
-      },
-    );
-    const formattedTotal = new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(total);
+      const lastJob = value[value.length - 1];
+      const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString(
+        "es-AR",
+        {
+          month: "long",
+        },
+      );
+      const formattedTotal = new Intl.NumberFormat("es-AR", {
+        style: "currency",
+        currency: "ARS",
+        minimumFractionDigits: 2,
+      }).format(total);
 
-    return {
-      id: key,
-      title: `Fact. ${monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)} (User: ${key})`,
-      content: `Cant. Facturas: ${value.length}`,
-      total: `Total: ${formattedTotal}`,
-    };
-  });
+      const user = users.find((user) => user.id === Number(key));
+      return {
+        id: key,
+        title: `Fact. ${
+          monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)
+        } (Cuit: ${user?.username})`,
+        content: `Cant. Facturas: ${value.length}`,
+        total: `Total: ${formattedTotal}`,
+      };
+    });
+  }, [groupedJobs, users]);
 
   const formatMoney = (value: string) => {
     return new Intl.NumberFormat("es-AR", {
@@ -103,10 +120,9 @@ const CardList: React.FC = () => {
   };
 
   useEffect(() => {
-    getFacturas()
-      .then((data: Job[]) => {
-        const groupedData = _.groupBy(data, "userId");
-        setGroupedJobs(groupedData);
+    getUsers()
+      .then((data) => {
+        setUsers(data);
       })
       .catch((error) => {
         console.error("Error fetching users:", error);
@@ -114,12 +130,27 @@ const CardList: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (updateCards) {
+      getFacturas()
+        .then((data: Job[]) => {
+          const groupedData = _.groupBy(data, "userId");
+          setGroupedJobs({ ...groupedData }); // Ensure new reference
+          setUpdateCards(false); // Reset immediately
+        })
+        .catch((error) => {
+          console.error("Error fetching facturas:", error);
+          setUpdateCards(false); // Reset on error
+        });
+    }
+  }, [updateCards]);
+
+  useEffect(() => {
     if (openDialog) {
       setCurrentOpenDialog(currentOpenDialog);
     } else {
       setCurrentOpenDialog(0);
     }
-  }, [openDialog]);
+  }, [currentOpenDialog, openDialog]);
 
   const filterByKey = (key: number) => {
     return groupedJobs[key] || [];
@@ -213,7 +244,7 @@ const CardList: React.FC = () => {
             onClick={() => handleOpenDialog(item.id)}
           >
             <CardContent>
-              <Typography variant="h6" component="div">
+              <Typography variant="subtitle2" component="div">
                 {item.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
