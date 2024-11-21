@@ -68,6 +68,9 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
           month: "long",
         },
       );
+      const currentMonth = new Date().toLocaleDateString("es-AR", {
+        month: "long",
+      });
       const formattedTotal = new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: "ARS",
@@ -80,8 +83,9 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         title: `Fact. ${
           monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)
         } (Cuit: ${user?.username})`,
-        content: `Cant. Facturas: ${value.length}`,
-        total: `Total: ${formattedTotal}`,
+        content: `${value.length}`,
+        total: `${formattedTotal}`,
+        active: monthLastJob === currentMonth,
       };
     });
   }, [groupedJobs, users]);
@@ -165,7 +169,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       case "error":
         return "error.main";
       default:
-        return "warning.main";
+        return "error.main";
     }
   };
 
@@ -208,9 +212,6 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
 
   const getDaysDifference = (date1: Date, date2: Date) => {
     const oneDay = 1000 * 60 * 60 * 24;
-    console.log(
-      Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay)),
-    );
     return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
   };
 
@@ -243,15 +244,19 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
             }}
             onClick={() => handleOpenDialog(item.id)}
           >
-            <CardContent>
+            <CardContent
+              sx={{
+                backgroundColor: item.active ? "aquamarine" : "grey.300",
+              }}
+            >
               <Typography variant="subtitle2" component="div">
                 {item.title}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {item.content}
+              <Typography variant="body1" color="text.secondary">
+                Cant. Facturas: <strong>{item.content}</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {item.total}
+                Total: <span style={{ color: "red" }}>{item.total}</span>
               </Typography>
             </CardContent>
           </HoverCard>
@@ -269,7 +274,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
           <Stack
             direction="row"
             flexWrap="wrap"
-            spacing={2}
+            gap={1}
             justifyContent="center"
           >
             {filterByKey(currentOpenDialog).map((job, index) => (
@@ -282,27 +287,27 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
                 <Card>
                   <CardContent>
                     <Typography variant="h6">
-                      {`Job ID: ${job.id}`}
-                      {job.status === "failed" ||
+                      {`Job ID: ${job.id}`}{" "}
+                      {(job.status === "failed" ||
                         (job.status === "pending" &&
                           getDaysDifference(
                             new Date(job.createdAt),
                             new Date(),
-                          ) > 2 && (
-                            <ReplayIcon
-                              sx={{
-                                color: isRetrying ? "grey.500" : "error.dark",
-                                position: "relative",
-                                top: 4.5,
-                                cursor: "pointer",
-                                ":hover": { color: "error.dark" },
-                                pointerEvents: isRetrying ? "none" : "auto",
-                              }}
-                              onClick={() => {
-                                retryJob(job.id);
-                              }}
-                            />
-                          ))}
+                          ) > 1)) && (
+                        <ReplayIcon
+                          sx={{
+                            color: isRetrying ? "grey.500" : "error.dark",
+                            position: "relative",
+                            top: 4.5,
+                            cursor: "pointer",
+                            ":hover": { color: "error.dark" },
+                            pointerEvents: isRetrying ? "none" : "auto",
+                          }}
+                          onClick={() => {
+                            retryJob(job.id);
+                          }}
+                        />
+                      )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {`Id de Usuario: ${job.userId}`}
@@ -355,7 +360,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         >
           Anterior
         </Button>
-        <Typography variant="body1">
+        <Typography variant="body1" position="relative" top={7}>
           Página {currentPage} de {totalPages}
         </Typography>
         <Button
