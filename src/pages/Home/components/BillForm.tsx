@@ -62,8 +62,8 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
   }, []);
 
   const handleRandomFacturas = () => {
-    const min = parseFloat(valorMaximo) * 0.00013;
-    const max = parseFloat(valorMaximo) * 0.00015;
+    const min = parseFloat(valorMaximo) * 0.000011;
+    const max = parseFloat(valorMaximo) * 0.0000125;
     const randomNumber = Math.random() * (max - min) + min;
     setFacturasTotales(Math.floor(randomNumber) + 1);
   };
@@ -128,7 +128,7 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const nextDay = new Date(today);
-  nextDay.setDate(today.getDate() + 2);
+  nextDay.setDate(today.getDate() + 1);
   const maxDayFromCurrentMonth = new Date(today);
   maxDayFromCurrentMonth.setMonth(today.getMonth() + 1);
   maxDayFromCurrentMonth.setDate(0);
@@ -229,7 +229,6 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   type="number"
                   fullWidth
                   required
-                  disabled
                   value={facturasTotales}
                   InputProps={{
                     startAdornment: (
@@ -258,15 +257,14 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   value={selectedDateInicio}
                   onChange={(newValue) => setSelectedDateInicio(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={tomorrow}
+                  minDate={today}
                 />
                 <DatePicker
                   label="Fecha Fin"
                   value={selectedDateFin}
                   onChange={(newValue) => setSelectedDateFin(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={nextDay}
-                  maxDate={maxDayFromCurrentMonth}
+                  minDate={today}
                 />
               </Stack>
 

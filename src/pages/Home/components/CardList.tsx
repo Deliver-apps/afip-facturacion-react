@@ -12,7 +12,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import { getFacturas } from "@src/api/facturacion";
-import * as _ from "lodash";
+import lodash from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -137,7 +137,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     if (updateCards) {
       getFacturas()
         .then((data: Job[]) => {
-          const groupedData = _.groupBy(data, "userId");
+          const groupedData = lodash.groupBy(data, "userId");
           setGroupedJobs({ ...groupedData }); // Ensure new reference
           setUpdateCards(false); // Reset immediately
         })
