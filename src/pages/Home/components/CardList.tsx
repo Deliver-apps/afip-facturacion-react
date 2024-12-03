@@ -11,12 +11,13 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { getFacturas } from "@src/api/facturacion";
+import { getFacturas, retryFactura } from "@src/api/facturacion";
 import lodash from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
 import ReplayIcon from "@mui/icons-material/Replay";
 import { getUsers } from "@src/api/users";
+import { showErrorToast, showSuccessToast } from "@src/helpers/toastifyCustom";
 
 const HoverCard = styled(Card)({
   transition: "transform 0.3s ease",
@@ -78,11 +79,14 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       }).format(total);
 
       const user = users.find((user) => user.id === Number(key));
+      const allFinished = value.every((job) => job.status === "completed");
       return {
         id: key,
         title: `Fact. ${
           monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)
         } (Cuit: ${user?.username})`,
+        subtitle: `${user?.real_name}`,
+        finished: allFinished,
         content: `${value.length}`,
         total: `${formattedTotal}`,
         active: monthLastJob === currentMonth,
@@ -215,14 +219,27 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
   };
 
-  const retryJob = async (jobId: number) => {
-    console.log("Retrying job...");
-    console.log(jobId);
+  const retryJob = async (jobId: number, jobUserId: number) => {
+    console.log("Retrying job... " + jobId);
     setIsRetrying(true);
-    setTimeout(() => {
-      console.log("Job retrying...");
+    try {
+      const job = groupedJobs[jobUserId].find((job) => job.id === jobId);
+      const response = await retryFactura(jobId);
+
+      if (response.status === 201) {
+        job!.status = "completed";
+        setGroupedJobs({ ...groupedJobs });
+        showSuccessToast("Job Ejecutado Correctamente", "top-right", 3000);
+      } else {
+        showErrorToast("Error al reintentar el job", "top-right", 3000);
+      }
       setIsRetrying(false);
-    }, 5000);
+    } catch (error) {
+      console.error("Error fetching facturas:", error);
+      setUpdateCards(false); // Reset on error
+      setIsRetrying(false);
+      showErrorToast("Error al reintentar el job", "top-right", 3000);
+    }
   };
 
   return (
@@ -252,11 +269,22 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
               <Typography variant="subtitle2" component="div">
                 {item.title}
               </Typography>
+              <Typography variant="subtitle2" component="div">
+                {item.subtitle}
+              </Typography>
               <Typography variant="body1" color="text.secondary">
                 Cant. Facturas: <strong>{item.content}</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Total: <span style={{ color: "red" }}>{item.total}</span>
+                Total: <span style={{ color: "red" }}>{item.total}</span>{" "}
+                <CircleIcon
+                  sx={{
+                    color: item.finished ? "success.dark" : "error.dark",
+                    fontSize: 14,
+                    position: "relative",
+                    top: 2,
+                  }}
+                />
               </Typography>
             </CardContent>
           </HoverCard>
@@ -304,7 +332,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
                             pointerEvents: isRetrying ? "none" : "auto",
                           }}
                           onClick={() => {
-                            retryJob(job.id);
+                            retryJob(job.id, job.userId);
                           }}
                         />
                       )}

@@ -257,14 +257,14 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   value={selectedDateInicio}
                   onChange={(newValue) => setSelectedDateInicio(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={today}
+                  minDate={tomorrow}
                 />
                 <DatePicker
                   label="Fecha Fin"
                   value={selectedDateFin}
                   onChange={(newValue) => setSelectedDateFin(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={today}
+                  minDate={tomorrow}
                 />
               </Stack>
 

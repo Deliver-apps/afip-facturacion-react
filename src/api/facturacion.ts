@@ -1,6 +1,6 @@
 import { config } from "@src/helpers/config";
 import { supabase } from "@src/service/supabaseClient";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import Cookies from "js-cookie";
 
 export const getFacturas = async () => {
@@ -46,5 +46,26 @@ export const createFactura = async (data: {
   } catch (error) {
     console.error("Error creating Factura: ", error);
     return [];
+  }
+};
+
+export const retryFactura = async (
+  jobId: number,
+): Promise<
+  AxiosResponse<{
+    status: number;
+    message: string;
+  }>
+> => {
+  try {
+    const response = await axios.post(`${config.apiUrl}api/bill/retry`, {
+      jobId,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Error retrying job:", error);
+    // Re-throw the error to be handled in the calling code
+    throw error;
   }
 };
