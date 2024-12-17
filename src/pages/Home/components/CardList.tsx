@@ -48,6 +48,16 @@ interface Props {
 
 const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   const [groupedJobs, setGroupedJobs] = useState<Record<number, Job[]>>({});
+  const [oldGroupedJobs, setOldGroupedJobs] = useState<Record<number, Job[]>>(
+    {},
+  );
+  const [labelButton, setLabelButton] = useState<string>(
+    "Facturaciones Previas",
+  );
+  const [tempGroupedJobs, setTempGroupedJobs] = useState<Record<number, Job[]>>(
+    {},
+  );
+  const [showButton, setShowButton] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentOpenDialog, setCurrentOpenDialog] = useState(0);
@@ -92,6 +102,18 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     }
   };
 
+  const isBeforeToday = (date: string) => {
+    console.log(date);
+    const formatter = new Intl.DateTimeFormat("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+
+    return date < formatter.format(new Date());
+  };
+
   const items = React.useMemo(() => {
     return Object.entries(groupedJobs).map(([key, value]) => {
       const total = value.reduce(
@@ -120,29 +142,21 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       const allFinished = value.every((job) => job.status === "completed");
 
       const maxDateJob = lodash.maxBy(value, (job) => new Date(job.createdAt));
-      console.log(
-        lastJob,
-        key,
-        value,
-        getNextCronDate(
-          maxDateJob?.cronExpression ?? "",
-          maxDateJob?.createdAt ?? "",
-        ),
-        currentMonth,
-      );
+      const active = getNextCronDate(
+        maxDateJob?.cronExpression ?? "",
+        maxDateJob?.createdAt ?? "",
+      )?.includes(currentMonth);
       return {
         id: key,
-        title: `Fact. ${
+        title: `Fact. ${active ? "" : "Hasta"} ${
           monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)
-        } (Cuit: ${user?.username})`,
+        } (Cuit: ${user?.username}) `,
+        old: `${active ? "" : "(Incluye facturas meses anteriores)"}`,
         subtitle: `${user?.real_name}`,
         finished: allFinished,
         content: `${value.length}`,
         total: `${formattedTotal}`,
-        active: getNextCronDate(
-          maxDateJob?.cronExpression ?? "",
-          maxDateJob?.createdAt ?? "",
-        )?.includes(currentMonth),
+        active,
       };
     });
   }, [groupedJobs, users]);
@@ -194,16 +208,42 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     if (updateCards) {
       getFacturas()
         .then((data: Job[]) => {
-          const groupedData = lodash.groupBy(data, "userId");
+          const orderByStatus = lodash.orderBy(data, ["status"], ["desc"]);
+          const currentMonth = new Date().toLocaleDateString("es-AR", {
+            month: "short",
+          });
+          const filterByExecutionDate = lodash.filter(
+            orderByStatus,
+            (job) =>
+              getNextCronDate(job.cronExpression, job.createdAt)!.includes(
+                currentMonth,
+              ) ||
+              job.status === "failed" ||
+              job.status === "pending",
+          );
+          const filterByExecutionDateOld = lodash.filter(
+            orderByStatus,
+            (job) =>
+              !getNextCronDate(job.cronExpression, job.createdAt)!.includes(
+                currentMonth,
+              ) && job.status === "completed",
+          );
+          const groupedDataOld = lodash.groupBy(
+            filterByExecutionDateOld,
+            "userId",
+          );
+          const groupedData = lodash.groupBy(filterByExecutionDate, "userId");
+          setOldGroupedJobs({ ...groupedDataOld });
           setGroupedJobs({ ...groupedData }); // Ensure new reference
           setUpdateCards(false); // Reset immediately
+          setShowButton(true);
         })
         .catch((error) => {
           console.error("Error fetching facturas:", error);
           setUpdateCards(false); // Reset on error
         });
     }
-  }, [updateCards]);
+  }, [updateCards, setUpdateCards]);
 
   useEffect(() => {
     if (openDialog) {
@@ -230,10 +270,10 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     }
   };
 
-  const getDaysDifference = (date1: Date, date2: Date) => {
-    const oneDay = 1000 * 60 * 60 * 24;
-    return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
-  };
+  // const getDaysDifference = (date1: Date, date2: Date) => {
+  //   const oneDay = 1000 * 60 * 60 * 24;
+  //   return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
+  // };
 
   const retryJob = async (jobId: number, jobUserId: number) => {
     console.log("Retrying job... " + jobId);
@@ -258,8 +298,32 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     }
   };
 
+  const showOldCards = () => {
+    if (labelButton === "Facturaciones Actuales") {
+      setLabelButton("Facturaciones Previas");
+      setGroupedJobs({ ...tempGroupedJobs });
+      setTempGroupedJobs({ ...groupedJobs });
+      return;
+    }
+    setLabelButton("Facturaciones Actuales");
+    setTempGroupedJobs({ ...groupedJobs });
+    setGroupedJobs(oldGroupedJobs);
+  };
+
   return (
     <div>
+      <Button
+        variant="contained"
+        sx={{
+          display: showButton ? "flex" : "none",
+          margin: "0 auto",
+          width: "50%",
+          mb: 2,
+        }}
+        onClick={() => showOldCards()}
+      >
+        {labelButton}
+      </Button>
       <Stack
         direction="row"
         flexWrap="wrap"
@@ -284,6 +348,9 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
             >
               <Typography variant="subtitle2" component="div">
                 {item.title}
+              </Typography>
+              <Typography variant="subtitle2" component="div" color="success">
+                {item.old}
               </Typography>
               <Typography variant="subtitle2" component="div">
                 {item.subtitle}
@@ -334,10 +401,9 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
                       {`Job ID: ${job.id}`}{" "}
                       {(job.status === "failed" ||
                         (job.status === "pending" &&
-                          getDaysDifference(
-                            new Date(job.createdAt),
-                            new Date(),
-                          ) > 1)) && (
+                          isBeforeToday(
+                            getNextCronDate(job.cronExpression, job.createdAt)!,
+                          ))) && (
                         <ReplayIcon
                           sx={{
                             color: isRetrying ? "grey.500" : "error.dark",
