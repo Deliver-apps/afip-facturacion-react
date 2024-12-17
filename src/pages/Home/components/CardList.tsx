@@ -55,6 +55,43 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   const itemsPerPage = 40;
   const [isRetrying, setIsRetrying] = useState(false);
 
+  const getNextCronDate = (cronExpression: string, createdAt: string) => {
+    try {
+      // Parse the cron expression
+      const interval = cronParser.parseExpression(cronExpression, {
+        tz: "America/Argentina/Buenos_Aires", // Set timezone for Argentina
+      });
+
+      // Get the next date based on the cron expression
+      const nextDate = interval.next().toDate();
+      const getMonthDifference = (dateFrom: Date, dateTo: Date): number => {
+        const yearDiff = dateTo.getFullYear() - dateFrom.getFullYear();
+        const monthDiff = dateTo.getMonth() - dateFrom.getMonth();
+
+        // Total months difference
+        return yearDiff * 12 + monthDiff;
+      };
+
+      // Format the date to Argentina timezone using Intl.DateTimeFormat
+      const formatter = new Intl.DateTimeFormat("es-AR", {
+        timeZone: "America/Argentina/Buenos_Aires",
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+
+      return formatter.format(
+        nextDate.setMonth(
+          nextDate.getMonth() -
+            getMonthDifference(new Date(createdAt), nextDate),
+        ),
+      );
+    } catch (error) {
+      console.error("Invalid cron expression:", error);
+      return null;
+    }
+  };
+
   const items = React.useMemo(() => {
     return Object.entries(groupedJobs).map(([key, value]) => {
       const total = value.reduce(
@@ -63,6 +100,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       );
 
       const lastJob = value[value.length - 1];
+
       const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString(
         "es-AR",
         {
@@ -70,7 +108,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         },
       );
       const currentMonth = new Date().toLocaleDateString("es-AR", {
-        month: "long",
+        month: "short",
       });
       const formattedTotal = new Intl.NumberFormat("es-AR", {
         style: "currency",
@@ -80,6 +118,18 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
 
       const user = users.find((user) => user.id === Number(key));
       const allFinished = value.every((job) => job.status === "completed");
+
+      const maxDateJob = lodash.maxBy(value, (job) => new Date(job.createdAt));
+      console.log(
+        lastJob,
+        key,
+        value,
+        getNextCronDate(
+          maxDateJob?.cronExpression ?? "",
+          maxDateJob?.createdAt ?? "",
+        ),
+        currentMonth,
+      );
       return {
         id: key,
         title: `Fact. ${
@@ -89,7 +139,10 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         finished: allFinished,
         content: `${value.length}`,
         total: `${formattedTotal}`,
-        active: monthLastJob === currentMonth,
+        active: getNextCronDate(
+          maxDateJob?.cronExpression ?? "",
+          maxDateJob?.createdAt ?? "",
+        )?.includes(currentMonth),
       };
     });
   }, [groupedJobs, users]);
@@ -174,43 +227,6 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         return "error.main";
       default:
         return "error.main";
-    }
-  };
-
-  const getNextCronDate = (cronExpression: string, createdAt: string) => {
-    try {
-      // Parse the cron expression
-      const interval = cronParser.parseExpression(cronExpression, {
-        tz: "America/Argentina/Buenos_Aires", // Set timezone for Argentina
-      });
-
-      // Get the next date based on the cron expression
-      const nextDate = interval.next().toDate();
-      const getMonthDifference = (dateFrom: Date, dateTo: Date): number => {
-        const yearDiff = dateTo.getFullYear() - dateFrom.getFullYear();
-        const monthDiff = dateTo.getMonth() - dateFrom.getMonth();
-
-        // Total months difference
-        return yearDiff * 12 + monthDiff;
-      };
-
-      // Format the date to Argentina timezone using Intl.DateTimeFormat
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Argentina/Buenos_Aires",
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      });
-
-      return formatter.format(
-        nextDate.setMonth(
-          nextDate.getMonth() -
-            getMonthDifference(new Date(createdAt), nextDate),
-        ),
-      );
-    } catch (error) {
-      console.error("Invalid cron expression:", error);
-      return null;
     }
   };
 
