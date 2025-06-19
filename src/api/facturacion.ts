@@ -69,3 +69,22 @@ export const retryFactura = async (
     throw error;
   }
 };
+
+export const deleteFacturasFromUser = async (userId: number) => {
+  try {
+    const tokenFromCookie = Cookies.get("authToken");
+    if (!tokenFromCookie) {
+      return null;
+    }
+    const response = await axios.delete(`${config.apiUrl}api/jobs/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${tokenFromCookie}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting Facturas: ", error);
+    return [];
+  }
+};

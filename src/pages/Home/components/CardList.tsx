@@ -64,6 +64,13 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   const [users, setUsers] = useState<User[]>([]);
   const itemsPerPage = 40;
   const [isRetrying, setIsRetrying] = useState(false);
+  const formatMoney = (value: string) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 2,
+    }).format(parseFloat(value));
+  };
 
   const getNextCronDate = (cronExpression: string, createdAt: string) => {
     try {
@@ -103,7 +110,6 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   };
 
   const isBeforeToday = (date: string) => {
-    console.log(date);
     const formatter = new Intl.DateTimeFormat("es-AR", {
       timeZone: "America/Argentina/Buenos_Aires",
       year: "numeric",
@@ -146,6 +152,18 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         maxDateJob?.cronExpression ?? "",
         maxDateJob?.createdAt ?? "",
       )?.includes(currentMonth);
+      const succesJobs = value.filter((job) => job.status === "completed");
+      const failedOrPendingJobs = value.filter(
+        (job) => job.status !== "completed",
+      );
+      const sumSuccesJobs = succesJobs.reduce(
+        (acc, curr) => acc + parseFloat(curr.valueToBill),
+        0,
+      );
+      const sumFailedOrPendingJobs = failedOrPendingJobs.reduce(
+        (acc, curr) => acc + parseFloat(curr.valueToBill),
+        0,
+      );
       return {
         id: key,
         title: `Fact. ${active ? "" : "Hasta"} ${
@@ -157,17 +175,11 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         content: `${value.length}`,
         total: `${formattedTotal}`,
         active,
+        sumSuccesJobs: `${formatMoney(sumSuccesJobs.toString())}`,
+        sumFailedOrPendingJobs: `${formatMoney(sumFailedOrPendingJobs.toString())}`,
       };
     });
   }, [groupedJobs, users]);
-
-  const formatMoney = (value: string) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(parseFloat(value));
-  };
 
   const totalPages = Math.ceil(items.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -358,16 +370,28 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
               <Typography variant="body1" color="text.secondary">
                 Cant. Facturas: <strong>{item.content}</strong>
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Total: <span style={{ color: "red" }}>{item.total}</span>{" "}
-                <CircleIcon
-                  sx={{
-                    color: item.finished ? "success.dark" : "error.dark",
-                    fontSize: 14,
-                    position: "relative",
-                    top: 2,
-                  }}
-                />
+
+              <Typography variant="subtitle1" color="success">
+                <strong>{`Facturado: ${item.sumSuccesJobs}`}</strong>
+              </Typography>
+              <Typography variant="subtitle1" color="warning">
+                <strong>
+                  {`Resta Facturar: ${item.sumFailedOrPendingJobs}`}{" "}
+                </strong>
+              </Typography>
+              <Typography variant="subtitle1" color="red">
+                <strong>
+                  Total a Facturar:{" "}
+                  <span style={{ color: "red" }}>{item.total}</span>{" "}
+                  <CircleIcon
+                    sx={{
+                      color: item.finished ? "success.dark" : "error.dark",
+                      fontSize: 14,
+                      position: "relative",
+                      top: 2,
+                    }}
+                  />
+                </strong>
               </Typography>
             </CardContent>
           </HoverCard>

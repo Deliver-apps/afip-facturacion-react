@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { BillForm, CardList, PrimarySearchAppBar } from "./components";
-import { Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 
 const Home: React.FC = () => {
@@ -11,14 +11,18 @@ const Home: React.FC = () => {
       <PrimarySearchAppBar />
       <ToastContainer />
       <Stack
-        direction="row"
-        flexWrap="wrap"
+        direction="column"
         justifyContent="center"
-        gap={6} // Increase the gap between elements
-        sx={{ width: "100%", mb: 5, mt: 3, p: 2, alignItems: "flex-start" }}
+        alignItems="center"
+        spacing={4}
+        sx={{ width: "100%", mb: 5, mt: 3, p: 2 }}
       >
-        <BillForm updateCards={updateCards} setUpdateCards={setUpdateCards} />
-        <CardList updateCards={updateCards} setUpdateCards={setUpdateCards} />
+        <Box sx={{ width: "100%", maxWidth: "90%" }}>
+          <BillForm updateCards={updateCards} setUpdateCards={setUpdateCards} />
+        </Box>
+        <Box sx={{ width: "100%", maxWidth: "90%" }}>
+          <CardList updateCards={updateCards} setUpdateCards={setUpdateCards} />
+        </Box>
       </Stack>
     </>
   );

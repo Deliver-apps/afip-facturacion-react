@@ -29,3 +29,33 @@ export const getUsers = async () => {
     return [];
   }
 };
+
+export const getOkFromVault = async (username: string) => {
+  try {
+    const tokenFromCookie = Cookies.get("authToken");
+    if (!tokenFromCookie) {
+      throw new Error("No token from cookie");
+    }
+    const response = await axios.get(`${config.apiUrl}api/get-ok/${username}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting Ok from Vault: ", error);
+    return null;
+  }
+};
+
+export const getOkFromAfipSdk = async (username: string) => {
+  try {
+    const tokenFromCookie = Cookies.get("authToken");
+    if (!tokenFromCookie) {
+      throw new Error("No token from cookie");
+    }
+    const response = await axios.get(
+      `${config.apiUrl}billC?username=${username}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting Ok from AfipSdk: ", error);
+    return null;
+  }
+};
