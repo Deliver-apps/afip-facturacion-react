@@ -10,8 +10,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
 } from "@mui/material";
-import { getFacturas, retryFactura } from "@src/api/facturacion";
+import { getFacturas, pauseBilling, retryFactura } from "@src/api/facturacion";
 import lodash from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
@@ -64,6 +65,8 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
   const [users, setUsers] = useState<User[]>([]);
   const itemsPerPage = 40;
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
+  const [openConfirmP, setOpenConfirmP] = useState(false);
   const formatMoney = (value: string) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -322,6 +325,40 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     setGroupedJobs(oldGroupedJobs);
   };
 
+  const handlePauseBilling = async () => {
+    console.log("Pausing billing...");
+    setIsPausing(true);
+    try {
+      const jobsFromUser = filterByKey(currentOpenDialog).map((job) => job.id);
+      console.log("Pausing billing...");
+      const response = await pauseBilling(jobsFromUser);
+      console.log(response);
+      if (response.message === "Jobs Paused successfully") {
+        showSuccessToast(
+          "Facturación pausada correctamente",
+          "top-right",
+          3000,
+        );
+        const updateToFailed = filterByKey(currentOpenDialog).map((job) => ({
+          ...job,
+          status: job.status === "completed" ? "completed" : "failed",
+        }));
+
+        setGroupedJobs((prev) => ({
+          ...prev,
+          [currentOpenDialog]: updateToFailed,
+        }));
+      } else {
+        showErrorToast("Error al pausar la facturación", "top-right", 3000);
+      }
+      setIsPausing(false);
+    } catch (error) {
+      console.error("Error pausing billing:", error);
+      setIsPausing(false);
+      showErrorToast("Error al pausar la facturación", "top-right", 3000);
+    }
+  };
+
   return (
     <div>
       <Button
@@ -358,31 +395,44 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
                 backgroundColor: item.active ? "aquamarine" : "grey.300",
               }}
             >
-              <Typography variant="subtitle2" component="div">
+              <Typography
+                variant="subtitle1"
+                component="div"
+                fontWeight={"bold"}
+              >
                 {item.title}
               </Typography>
-              <Typography variant="subtitle2" component="div" color="success">
+              <Typography
+                variant="subtitle1"
+                component="div"
+                color="success"
+                fontWeight={"bold"}
+              >
                 {item.old}
               </Typography>
-              <Typography variant="subtitle2" component="div">
+              <Typography
+                variant="subtitle1"
+                component="div"
+                fontWeight={"bold"}
+              >
                 {item.subtitle}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="black" fontWeight="bold">
                 Cant. Facturas: <strong>{item.content}</strong>
               </Typography>
 
               <Typography variant="subtitle1" color="success">
                 <strong>{`Facturado: ${item.sumSuccesJobs}`}</strong>
               </Typography>
-              <Typography variant="subtitle1" color="warning">
+              <Typography variant="subtitle1" color="error">
                 <strong>
                   {`Resta Facturar: ${item.sumFailedOrPendingJobs}`}{" "}
                 </strong>
               </Typography>
-              <Typography variant="subtitle1" color="red">
+              <Typography variant="subtitle1" color="black">
                 <strong>
                   Total a Facturar:{" "}
-                  <span style={{ color: "red" }}>{item.total}</span>{" "}
+                  <span style={{ color: "black" }}>{item.total}</span>{" "}
                   <CircleIcon
                     sx={{
                       color: item.finished ? "success.dark" : "error.dark",
@@ -471,12 +521,45 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         </DialogContent>
         <DialogActions>
           <Button
+            onClick={() => setOpenConfirmP(true)}
+            color="primary"
+            variant="contained"
+            disabled={isPausing}
+            sx={{ mr: 1 }}
+          >
+            {isPausing ? (
+              <CircularProgress size="2rem" color="primary" />
+            ) : (
+              "Pausar Facturación"
+            )}
+          </Button>
+          <Button
             onClick={handleCloseDialog}
             color="primary"
             variant="contained"
           >
-            CLOSE
+            Cerrar
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={openConfirmP} onClose={() => setOpenConfirmP(false)}>
+        <DialogTitle>Confirmar pausa</DialogTitle>
+        <DialogContent>
+          <Typography>¿Seguro que deseas pausar la facturación?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setOpenConfirmP(false);
+              handlePauseBilling();
+            }}
+            color="primary"
+            variant="contained"
+            disabled={isPausing}
+          >
+            Confirmar
+          </Button>
+          <Button onClick={() => setOpenConfirmP(false)}>Cancelar</Button>
         </DialogActions>
       </Dialog>
       <Stack

@@ -70,6 +70,32 @@ export const retryFactura = async (
   }
 };
 
+export const pauseBilling = async (list: number[]) => {
+  try {
+    const tokenFromCookie = Cookies.get("authToken");
+    if (!tokenFromCookie) {
+      return null;
+    }
+    const response = await axios.post(
+      `${config.apiUrl}api/jobs/fail`,
+      {
+        jobsId: list,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${tokenFromCookie}`,
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error pausing billing:", error);
+    // Re-throw the error to be handled in the calling code
+    throw error;
+  }
+};
+
 export const deleteFacturasFromUser = async (userId: number) => {
   try {
     const tokenFromCookie = Cookies.get("authToken");
