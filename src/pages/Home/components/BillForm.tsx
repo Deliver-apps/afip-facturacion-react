@@ -297,12 +297,16 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box
         sx={{
-          maxWidth: 600,
+          maxWidth: { xs: "100%", sm: 600, md: 700 },
           margin: "0 auto",
-          padding: 4,
+          padding: { xs: 2, sm: 3, md: 4 },
           boxShadow: 3,
-          borderRadius: 2,
+          borderRadius: 3,
           backgroundColor: "#fff",
+          '@media (max-width:600px)': {
+            padding: 2,
+            margin: 1,
+          }
         }}
       >
         <Typography
@@ -312,10 +316,16 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
           sx={{
             display: "flex",
             alignItems: "center",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 2, sm: 0 },
+            mb: 3,
+            color: 'primary.main',
+            fontWeight: 700,
+            textAlign: { xs: 'center', sm: 'left' }
           }}
         >
-          Crear Facturación
-          <Box ml={15}>
+          📋 Crear Facturación
+          <Box sx={{ ml: { xs: 0, sm: 15 } }}>
             <CreateUserDialog />
           </Box>
         </Typography>
@@ -327,18 +337,24 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
             alignItems="center"
             my={4}
           >
-            <CircularProgress />
+            <CircularProgress size={40} sx={{ color: 'primary.main' }} />
           </Box>
         )}
 
         {!loadingUsers && usersError && (
-          <Alert severity="error">{usersError}</Alert>
+          <Alert severity="error" sx={{ borderRadius: 2, mb: 2 }}>
+            {usersError}
+          </Alert>
         )}
 
         {!loadingUsers && !usersError && (
           <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
-              {formError && <Alert severity="error">{formError}</Alert>}
+              {formError && (
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  {formError}
+                </Alert>
+              )}
 
               {/* User Dropdown with Search */}
               <Autocomplete
@@ -352,9 +368,15 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Usuario"
+                    label="👤 Usuario"
                     variant="outlined"
                     required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        backgroundColor: 'background.paper',
+                      }
+                    }}
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: selectedUser ? (
@@ -365,6 +387,10 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                             onClick={handleEditClick}
                             sx={{
                               color: "primary.main",
+                              '&:hover': {
+                                backgroundColor: 'primary.light',
+                                color: 'white',
+                              }
                             }}
                           >
                             <EditNote fontSize="large" />
@@ -375,6 +401,10 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                             onClick={handleDeleteClick}
                             sx={{
                               color: "error.main",
+                              '&:hover': {
+                                backgroundColor: 'error.light',
+                                color: 'white',
+                              }
                             }}
                           >
                             <DeleteForever fontSize="large" />
@@ -396,12 +426,18 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
               {/* Valor Mínimo and Valor Máximo */}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
                 <TextField
-                  label="Monto mínimo"
+                  label="💰 Monto mínimo"
                   type="number"
                   fullWidth
                   required
                   value={valorMinimo}
                   onChange={(e) => setValorMinimo(e.target.value)}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">$</InputAdornment>
@@ -409,12 +445,18 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   }}
                 />
                 <TextField
-                  label="Monto máximo"
+                  label="💰 Monto máximo"
                   type="number"
                   fullWidth
                   required
                   value={valorMaximo}
                   onChange={(e) => setValorMaximo(e.target.value)}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">$</InputAdornment>
@@ -424,73 +466,118 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
               </Stack>
 
               {/* Facturas Totales */}
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
-                <TextField
-                  label="Facturas Totales"
-                  type="number"
-                  fullWidth
-                  required
-                  value={facturasTotales}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <IconButton
-                          onClick={handleRandomFacturas}
-                          edge="start"
-                          disabled={
-                            !valorMinimo ||
-                            !valorMaximo ||
-                            Number(valorMinimo) > Number(valorMaximo)
+              <TextField
+                label="📄 Facturas Totales"
+                type="number"
+                fullWidth
+                required
+                value={facturasTotales}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: 'background.paper',
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconButton
+                        onClick={handleRandomFacturas}
+                        edge="start"
+                        disabled={
+                          !valorMinimo ||
+                          !valorMaximo ||
+                          Number(valorMinimo) > Number(valorMaximo)
+                        }
+                        sx={{
+                          color: 'secondary.main',
+                          '&:hover': {
+                            backgroundColor: 'secondary.light',
+                            color: 'white',
                           }
-                        >
-                          <Shuffle />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Stack>
+                        }}
+                      >
+                        <Shuffle />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
 
               {/* Date Pickers */}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
                 <DatePicker
-                  label="Fecha Inicio"
+                  label="📅 Fecha Inicio"
                   value={selectedDateInicio}
                   onChange={(newValue) => setSelectedDateInicio(newValue)}
                   format="dd/MM/yyyy"
                   minDate={tomorrow}
+                  sx={{
+                    flex: 1,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                 />
                 <DatePicker
-                  label="Fecha Fin"
+                  label="📅 Fecha Fin"
                   value={selectedDateFin}
                   onChange={(newValue) => setSelectedDateFin(newValue)}
                   format="dd/MM/yyyy"
                   minDate={tomorrow}
+                  sx={{
+                    flex: 1,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                 />
               </Stack>
 
               {/* Hours */}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
                 <TextField
-                  label="Hora Inicio"
+                  label="🕐 Hora Inicio"
                   type="number"
                   fullWidth
                   value={minHour}
                   onChange={(e) => setMinHour(Number(e.target.value))}
                   inputProps={{ min: 0, max: 23 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                 />
                 <TextField
-                  label="Hora Fin"
+                  label="🕐 Hora Fin"
                   type="number"
                   fullWidth
                   value={maxHour}
                   onChange={(e) => setMaxHour(Number(e.target.value))}
                   inputProps={{ min: 0, max: 23 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: 'background.paper',
+                    }
+                  }}
                 />
               </Stack>
 
               {/* Buttons */}
-              <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Box display="flex" justifyContent="flex-end" gap={2} sx={{
+                flexDirection: { xs: 'column', sm: 'row' },
+                '& .MuiButton-root': {
+                  minWidth: { xs: '100%', sm: 120 },
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                }
+              }}>
                 <Button
                   variant="contained"
                   color="primary"
@@ -502,15 +589,36 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                     Number(valorMaximo) < Number(valorMinimo) ||
                     !facturasTotales
                   }
+                  sx={{
+                    background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    },
+                    '&:disabled': {
+                      background: 'grey.300',
+                      color: 'grey.500',
+                    }
+                  }}
                 >
-                  Aceptar
+                  ✅ Aceptar
                 </Button>
                 <Button
                   variant="outlined"
                   color="secondary"
                   onClick={handleCancel}
+                  sx={{
+                    borderColor: 'secondary.main',
+                    color: 'secondary.main',
+                    '&:hover': {
+                      backgroundColor: 'secondary.light',
+                      color: 'white',
+                      borderColor: 'secondary.light',
+                    }
+                  }}
                 >
-                  Cancelar
+                  ❌ Cancelar
                 </Button>
               </Box>
             </Stack>
@@ -522,117 +630,332 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
         onClose={() => setEditDialogOpen(false)}
         fullWidth
         maxWidth="xs"
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            '@media (max-width:600px)': {
+              margin: 2,
+              width: 'calc(100% - 32px)',
+              maxWidth: 'calc(100% - 32px)',
+            }
+          }
+        }}
       >
-        <DialogTitle>Editar Usuario</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="ID"
-            fullWidth
-            value={editableUser?.id ?? ""}
-            margin="dense"
-            InputProps={{ readOnly: true }}
-          />
-          <TextField
-            label="Nombre Real"
-            fullWidth
-            margin="dense"
-            value={editableUser?.real_name ?? ""}
-            onChange={(e) =>
-              setEditableUser((prev) =>
-                prev ? { ...prev, real_name: e.target.value } : prev,
-              )
-            }
-          />
-          <TextField
-            label="Username"
-            fullWidth
-            margin="dense"
-            value={editableUser?.username ?? ""}
-            onChange={(e) =>
-              setEditableUser((prev) =>
-                prev ? { ...prev, username: e.target.value } : prev,
-              )
-            }
-          />
-          <TextField
-            label="Contraseña"
-            type={showPassword ? "text" : "password"}
-            fullWidth
-            margin="dense"
-            value={editableUser?.password ?? ""}
-            onChange={(e) =>
-              setEditableUser((prev) =>
-                prev ? { ...prev, password: e.target.value } : prev,
-              )
-            }
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Stack direction="row" alignItems="center" spacing={1} mt={2}>
-            <Typography variant="inherit">
-              ¿Querés verificar la conexión con AFIP SDK?
-            </Typography>
-            <Button
-              variant="text"
-              onClick={handleVerify}
-              disabled={loadingVerify}
-            >
-              {loadingVerify ? (
-                <CircularProgress size={30} />
-              ) : (
-                <Handyman color="warning" fontSize="large" />
-              )}
-            </Button>
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+          color: 'white',
+          borderRadius: '12px 12px 0 0',
+          fontWeight: 600,
+          fontSize: { xs: '1rem', sm: '1.1rem' },
+          py: { xs: 2, sm: 3 },
+        }}>
+          ✏️ Editar Usuario
+        </DialogTitle>
+        <DialogContent sx={{ 
+          p: { xs: 2, sm: 3 },
+          maxHeight: { xs: '70vh', sm: '80vh' },
+          overflow: 'auto'
+        }}>
+          <Stack spacing={{ xs: 1.5, sm: 2 }} mt={2}>
+            <TextField
+              label="🆔 ID"
+              fullWidth
+              value={editableUser?.id ?? ""}
+              margin="dense"
+              InputProps={{ readOnly: true }}
+              sx={{ 
+                '& .MuiOutlinedInput-root': { 
+                  backgroundColor: 'grey.50',
+                  borderRadius: 2,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                '& .MuiInputLabel-root': {
+                  fontWeight: 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
+            />
+            <TextField
+              label="👤 Nombre Real"
+              fullWidth
+              margin="dense"
+              value={editableUser?.real_name ?? ""}
+              onChange={(e) =>
+                setEditableUser((prev) =>
+                  prev ? { ...prev, real_name: e.target.value } : prev,
+                )
+              }
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  backgroundColor: 'background.paper',
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                '& .MuiInputLabel-root': {
+                  fontWeight: 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
+            />
+            <TextField
+              label="📧 Username"
+              fullWidth
+              margin="dense"
+              value={editableUser?.username ?? ""}
+              onChange={(e) =>
+                setEditableUser((prev) =>
+                  prev ? { ...prev, username: e.target.value } : prev,
+                )
+              }
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  backgroundColor: 'background.paper',
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                '& .MuiInputLabel-root': {
+                  fontWeight: 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
+            />
+            <TextField
+              label="🔒 Contraseña"
+              type={showPassword ? "text" : "password"}
+              fullWidth
+              margin="dense"
+              value={editableUser?.password ?? ""}
+              onChange={(e) =>
+                setEditableUser((prev) =>
+                  prev ? { ...prev, password: e.target.value } : prev,
+                )
+              }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      size="small"
+                      sx={{
+                        color: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                          color: 'white',
+                        }
+                      }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  backgroundColor: 'background.paper',
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                '& .MuiInputLabel-root': {
+                  fontWeight: 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
+            />
+            <Box sx={{ 
+              mt: 2, 
+              p: { xs: 1.5, sm: 2 }, 
+              backgroundColor: 'warning.light', 
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'warning.main'
+            }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems="center" spacing={1}>
+                <Typography 
+                  variant="body2" 
+                  color="warning.dark" 
+                  fontWeight={500}
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
+                  🔧 ¿Querés verificar la conexión con AFIP SDK?
+                </Typography>
+                <Button
+                  variant="text"
+                  onClick={handleVerify}
+                  disabled={loadingVerify}
+                  sx={{ 
+                    minWidth: 'auto',
+                    color: 'warning.dark',
+                    '&:hover': {
+                      backgroundColor: 'warning.main',
+                      color: 'white',
+                    }
+                  }}
+                >
+                  {loadingVerify ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Handyman color="error" fontSize="small" />
+                  )}
+                </Button>
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ 
+          p: { xs: 2, sm: 3 }, 
+          pt: 0,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 2 }
+        }}>
           <Button
             variant="contained"
             onClick={handleSave}
             disabled={loadingSave}
             startIcon={loadingSave ? <CircularProgress size={20} /> : null}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 120 },
+              background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              },
+              '&:disabled': {
+                background: 'grey.300',
+                color: 'grey.500',
+              },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
           >
-            Guardar
+            💾 Guardar
           </Button>
-          <Button onClick={() => setEditDialogOpen(false)} color="secondary">
-            Cancelar
+          <Button 
+            onClick={() => setEditDialogOpen(false)} 
+            color="secondary"
+            variant="outlined"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 120 },
+              borderColor: 'secondary.main',
+              color: 'secondary.main',
+              '&:hover': {
+                backgroundColor: 'secondary.light',
+                color: 'white',
+                borderColor: 'secondary.light',
+              },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
+          >
+            ❌ Cancelar
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={deleteDialogOpen} onClose={handleCancelDelete}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Estás seguro que deseas eliminar al usuario{" "}
-            <strong>{selectedUser?.real_name}</strong>?
-          </Typography>
-          <Typography sx={{ mt: 2, ml: 0.8 }}>
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={handleCancelDelete}
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            '@media (max-width:600px)': {
+              margin: 2,
+              width: 'calc(100% - 32px)',
+              maxWidth: 'calc(100% - 32px)',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+          color: 'white',
+          borderRadius: '12px 12px 0 0',
+          fontWeight: 600,
+          fontSize: { xs: '1rem', sm: '1.1rem' },
+          py: { xs: 2, sm: 3 }
+        }}>
+          ⚠️ Confirmar Eliminación
+        </DialogTitle>
+        <DialogContent sx={{ 
+          p: { xs: 2, sm: 3 },
+          maxHeight: { xs: '70vh', sm: '80vh' },
+          overflow: 'auto'
+        }}>
+          <Box sx={{ 
+            p: { xs: 1.5, sm: 2 }, 
+            backgroundColor: 'error.light', 
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'error.main',
+            mb: 2
+          }}>
+            <Typography 
+              variant="body1" 
+              gutterBottom 
+              fontWeight={500}
+              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+            >
+              ¿Estás seguro que deseas eliminar al usuario{" "}
+              <strong style={{ color: 'error.dark' }}>{selectedUser?.real_name}</strong>?
+            </Typography>
+          </Box>
+          <Typography 
+            variant="body2" 
+            color="error" 
+            sx={{ 
+              p: { xs: 1.5, sm: 2 },
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'error.main',
+              fontSize: { xs: '0.75rem', sm: '0.875rem' }
+            }}
+          >
             <strong>
-              Esta acción eliminará las facturaciones asociadas a el usuario.
+              ⚠️ Esta acción eliminará las facturaciones asociadas a el usuario.
             </strong>
           </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelDelete} color="primary">
-            Cancelar
+        <DialogActions sx={{ 
+          p: { xs: 2, sm: 3 }, 
+          pt: 0,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 2 }
+        }}>
+          <Button 
+            onClick={handleCancelDelete} 
+            color="primary"
+            variant="outlined"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 120 },
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': {
+                backgroundColor: 'primary.light',
+                color: 'white',
+                borderColor: 'primary.light',
+              },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
+          >
+            ✅ Cancelar
           </Button>
           <Button
             onClick={handleConfirmDelete}
             variant="contained"
             color="error"
+            sx={{ 
+              minWidth: { xs: '100%', sm: 120 },
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3), 0 2px 4px -1px rgba(239, 68, 68, 0.2)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.4), 0 4px 6px -2px rgba(239, 68, 68, 0.3)',
+              },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
           >
-            Eliminar
+            🗑️ Eliminar
           </Button>
         </DialogActions>
       </Dialog>

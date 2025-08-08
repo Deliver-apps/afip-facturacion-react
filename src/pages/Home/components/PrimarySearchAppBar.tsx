@@ -1,5 +1,6 @@
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import MoreIcon from "@mui/icons-material/MoreVert";
+import LogoutIcon from "@mui/icons-material/Logout";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
@@ -52,7 +53,7 @@ export default function PrimarySearchAppBar() {
     <Menu
       anchorEl={anchorEl}
       anchorOrigin={{
-        vertical: "top",
+        vertical: "bottom",
         horizontal: "right",
       }}
       id={menuId}
@@ -63,8 +64,31 @@ export default function PrimarySearchAppBar() {
       }}
       open={isMenuOpen}
       onClose={handleMenuClose}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          mt: 1, // Margen superior para separarlo del botón
+        }
+      }}
     >
-      <MenuItem onClick={handleMenuClickClose}>LogOut</MenuItem>
+      <MenuItem 
+        onClick={handleMenuClickClose}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          py: 1.5,
+          px: 2,
+          '&:hover': {
+            backgroundColor: 'primary.light',
+            color: 'white',
+          }
+        }}
+      >
+        <LogoutIcon fontSize="small" />
+        Cerrar Sesión
+      </MenuItem>
     </Menu>
   );
 
@@ -73,7 +97,7 @@ export default function PrimarySearchAppBar() {
     <Menu
       anchorEl={mobileMoreAnchorEl}
       anchorOrigin={{
-        vertical: "top",
+        vertical: "bottom",
         horizontal: "right",
       }}
       id={mobileMenuId}
@@ -84,36 +108,73 @@ export default function PrimarySearchAppBar() {
       }}
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          mt: 1, // Margen superior para separarlo del botón
+        }
+      }}
     >
-      <MenuItem onClick={handleProfileMenuOpen}>
+      <MenuItem 
+        onClick={handleProfileMenuOpen}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          py: 1.5,
+          px: 2,
+          '&:hover': {
+            backgroundColor: 'primary.light',
+            color: 'white',
+          }
+        }}
+      >
         <IconButton
-          size="large"
+          size="small"
           aria-label="account of current user"
           aria-controls="primary-search-account-menu"
           aria-haspopup="true"
           color="inherit"
+          sx={{ p: 0 }}
         >
           <AccountCircle />
         </IconButton>
-        <p>Profile</p>
+        <Typography variant="body2">Perfil</Typography>
       </MenuItem>
     </Menu>
   );
 
   return (
-    <Box sx={{ flexGrow: 1, width: "99.2vw", margin: 0, padding: 0 }}>
+    <Box sx={{ flexGrow: 1, width: "100vw", margin: 0, padding: 0 }}>
       <AppBar
         position="static"
-        sx={{ margin: 0, padding: 0, boxShadow: "none", width: "100%" }}
+        sx={{ 
+          margin: 0, 
+          padding: 0, 
+          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)", 
+          width: "100%" 
+        }}
       >
-        <Toolbar sx={{ paddingLeft: 0, paddingRight: 0 }}>
+        <Toolbar sx={{ 
+          paddingLeft: { xs: 2, sm: 3 }, 
+          paddingRight: { xs: 2, sm: 3 },
+          minHeight: { xs: 64, sm: 70 }
+        }}>
           <Typography
-            variant="h6"
+            variant="h5"
             noWrap
             component="div"
-            sx={{ display: { xs: "none", sm: "block" } }}
+            sx={{ 
+              display: { xs: "block", sm: "block" },
+              fontSize: { xs: '1.25rem', sm: '1.5rem' },
+              fontWeight: 700,
+              color: 'white',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
           >
-            Facturación
+            🧾 Facturación AFIP
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: "none", md: "flex" } }}>
@@ -124,7 +185,13 @@ export default function PrimarySearchAppBar() {
               aria-controls={menuId}
               aria-haspopup="true"
               onClick={handleProfileMenuOpen}
-              color="inherit"
+              sx={{
+                color: 'white',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                }
+              }}
             >
               <AccountCircle />
             </IconButton>
@@ -136,7 +203,13 @@ export default function PrimarySearchAppBar() {
               aria-controls={mobileMenuId}
               aria-haspopup="true"
               onClick={handleMobileMenuOpen}
-              color="inherit"
+              sx={{
+                color: 'white',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                }
+              }}
             >
               <MoreIcon />
             </IconButton>

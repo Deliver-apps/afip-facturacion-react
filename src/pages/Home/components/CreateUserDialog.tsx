@@ -193,6 +193,7 @@ const CreateUserDialog = () => {
       real_name: formData.real_name.trim(),
       password: formData.password,
     };
+    console.log("payload", payload);
 
     try {
       /* ---------- 3. Crear usuario ---------- */
@@ -298,9 +299,34 @@ const CreateUserDialog = () => {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
+      <Button 
+        variant="outlined" 
+        onClick={() => setOpen(true)}
+        sx={{
+          borderRadius: 2,
+          py: 1,
+          px: 2,
+          borderColor: 'secondary.main',
+          color: 'secondary.main',
+          fontWeight: 600,
+          '&:hover': {
+            backgroundColor: 'secondary.light',
+            color: 'white',
+            borderColor: 'secondary.light',
+          },
+          '@media (max-width:600px)': {
+            py: 0.75,
+            px: 1.5,
+            fontSize: '0.875rem',
+          }
+        }}
+      >
         <AddCircle fontSize="medium" />
-        <Typography ml={1} variant="body1">
+        <Typography ml={1} variant="body1" sx={{
+          '@media (max-width:600px)': {
+            fontSize: '0.875rem',
+          }
+        }}>
           Crear Usuario
         </Typography>
       </Button>
@@ -310,17 +336,33 @@ const CreateUserDialog = () => {
         onClose={() => setOpen(false)}
         fullWidth
         maxWidth="md"
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            '@media (max-width:600px)': {
+              margin: 2,
+              width: 'calc(100% - 32px)',
+            }
+          }
+        }}
       >
-        <DialogTitle>Datos del Usuario</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ 
+          backgroundColor: 'secondary.main', 
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
+          Datos del Usuario
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
           <Stack
-            direction="row"
+            direction={{ xs: "column", md: "row" }}
             spacing={4}
             alignItems="flex-start"
             sx={{ width: "100%" }}
           >
             {/* Left: Form */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Stack spacing={2} mt={1}>
                 <TextField
                   label="CUIT (Sin Guiones)"
@@ -373,9 +415,10 @@ const CreateUserDialog = () => {
             <Box
               sx={{
                 flexShrink: 0,
-                minWidth: 240,
-                borderLeft: "1px solid #e0e0e0",
-                pl: 2,
+                minWidth: { xs: '100%', md: 240 },
+                borderLeft: { xs: 'none', md: '1px solid #e0e0e0' },
+                pl: { xs: 0, md: 2 },
+                pt: { xs: 2, md: 0 },
                 height: "100%",
               }}
             >
@@ -418,11 +461,12 @@ const CreateUserDialog = () => {
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button
             variant="contained"
             onClick={handleSubmit}
             disabled={isLoading}
+            sx={{ minWidth: 120 }}
           >
             Crear
           </Button>
@@ -430,6 +474,8 @@ const CreateUserDialog = () => {
             onClick={() => setOpen(false)}
             color="secondary"
             disabled={isLoading}
+            variant="outlined"
+            sx={{ minWidth: 120 }}
           >
             Cancelar
           </Button>

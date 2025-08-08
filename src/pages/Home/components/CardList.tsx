@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Box,
 } from "@mui/material";
 import { getFacturas, pauseBilling, retryFactura } from "@src/api/facturacion";
 import lodash from "lodash";
@@ -366,8 +367,17 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         sx={{
           display: showButton ? "flex" : "none",
           margin: "0 auto",
-          width: "50%",
+          width: { xs: "90%", sm: "70%", md: "50%" },
           mb: 2,
+          borderRadius: 2,
+          py: 1.5,
+          background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          fontWeight: 600,
+          '&:hover': {
+            background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          }
         }}
         onClick={() => showOldCards()}
       >
@@ -377,72 +387,155 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         direction="row"
         flexWrap="wrap"
         justifyContent="center"
-        gap={2}
-        sx={{ width: "100%", mb: 2 }}
+        gap={{ xs: 1, sm: 2 }}
+        sx={{ 
+          width: "100%", 
+          mb: 2,
+          '@media (max-width:600px)': {
+            gap: 1,
+          }
+        }}
       >
         {currentItems.map((item) => (
           <HoverCard
             key={item.id}
             sx={{
-              width: "100%",
-              maxWidth: 300,
+              width: { xs: "100%", sm: "calc(50% - 8px)", md: "calc(33% - 12px)", lg: 300 },
+              maxWidth: { xs: "100%", sm: 300 },
+              minHeight: 200, // Altura mínima fija
               ":hover": { cursor: "grab", color: "primary.main" },
+              '@media (max-width:600px)': {
+                width: "100%",
+                maxWidth: "100%",
+              }
             }}
             onClick={() => handleOpenDialog(item.id)}
           >
             <CardContent
               sx={{
-                backgroundColor: item.active ? "aquamarine" : "grey.300",
+                backgroundColor: item.active ? "rgba(16, 185, 129, 0.1)" : "rgba(156, 163, 175, 0.1)",
+                p: { xs: 2, sm: 3 },
+                border: item.active ? '2px solid #10b981' : '2px solid transparent',
+                borderRadius: 2,
+                transition: 'all 0.3s ease',
+                height: '100%', // Ocupar toda la altura
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between', // Distribuir contenido uniformemente
+                '&:hover': {
+                  backgroundColor: item.active ? "rgba(16, 185, 129, 0.15)" : "rgba(156, 163, 175, 0.15)",
+                  transform: 'translateY(-2px)',
+                }
               }}
             >
-              <Typography
-                variant="subtitle1"
-                component="div"
-                fontWeight={"bold"}
-              >
-                {item.title}
-              </Typography>
-              <Typography
-                variant="subtitle1"
-                component="div"
-                color="success"
-                fontWeight={"bold"}
-              >
-                {item.old}
-              </Typography>
-              <Typography
-                variant="subtitle1"
-                component="div"
-                fontWeight={"bold"}
-              >
-                {item.subtitle}
-              </Typography>
-              <Typography variant="body1" color="black" fontWeight="bold">
-                Cant. Facturas: <strong>{item.content}</strong>
-              </Typography>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  component="div"
+                  fontWeight={"bold"}
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    lineHeight: 1.2,
+                    minHeight: '2.4em', // Altura mínima para el título
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {item.title}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  component="div"
+                  color="success"
+                  fontWeight={"bold"}
+                  sx={{ 
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {item.old}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  component="div"
+                  fontWeight={"bold"}
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {item.subtitle}
+                </Typography>
+                <Typography 
+                  variant="body1" 
+                  color="black" 
+                  fontWeight="bold" 
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  Cant. Facturas: <strong>{item.content}</strong>
+                </Typography>
+              </Box>
 
-              <Typography variant="subtitle1" color="success">
-                <strong>{`Facturado: ${item.sumSuccesJobs}`}</strong>
-              </Typography>
-              <Typography variant="subtitle1" color="error">
-                <strong>
-                  {`Resta Facturar: ${item.sumFailedOrPendingJobs}`}{" "}
-                </strong>
-              </Typography>
-              <Typography variant="subtitle1" color="black">
-                <strong>
-                  Total a Facturar:{" "}
-                  <span style={{ color: "black" }}>{item.total}</span>{" "}
-                  <CircleIcon
-                    sx={{
-                      color: item.finished ? "success.dark" : "error.dark",
-                      fontSize: 14,
-                      position: "relative",
-                      top: 2,
-                    }}
-                  />
-                </strong>
-              </Typography>
+              <Box sx={{ mt: 'auto', pt: 1 }}>
+                <Typography 
+                  variant="subtitle1" 
+                  color="success" 
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <strong>{`Facturado: ${item.sumSuccesJobs}`}</strong>
+                </Typography>
+                <Typography 
+                  variant="subtitle1" 
+                  color="error" 
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <strong>
+                    {`Resta Facturar: ${item.sumFailedOrPendingJobs}`}{" "}
+                  </strong>
+                </Typography>
+                <Typography 
+                  variant="subtitle1" 
+                  color="black" 
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <strong>
+                    Total a Facturar:{" "}
+                    <span style={{ color: "black" }}>{item.total}</span>{" "}
+                    <CircleIcon
+                      sx={{
+                        color: item.finished ? "success.dark" : "error.dark",
+                        fontSize: 14,
+                        position: "relative",
+                        top: 2,
+                      }}
+                    />
+                  </strong>
+                </Typography>
+              </Box>
             </CardContent>
           </HoverCard>
         ))}
@@ -453,25 +546,49 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            '@media (max-width:600px)': {
+              margin: 2,
+              width: 'calc(100% - 32px)',
+            }
+          }
+        }}
       >
-        <DialogTitle>Detalles de Facturación</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ 
+          backgroundColor: 'info.main', 
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
+          Detalles de Facturación
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
           <Stack
             direction="row"
             flexWrap="wrap"
             gap={1}
             justifyContent="center"
+            sx={{
+              '@media (max-width:600px)': {
+                gap: 0.5,
+              }
+            }}
           >
             {filterByKey(currentOpenDialog).map((job, index) => (
               <Stack
                 key={index}
-                sx={{ width: "calc(25% - 16px)", cursor: "context-menu" }}
+                sx={{ 
+                  width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' }, 
+                  cursor: "context-menu" 
+                }}
                 mb={2}
                 borderBottom={1}
               >
                 <Card>
                   <CardContent>
-                    <Typography variant="h6">
+                    <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                       {`Job ID: ${job.id}`}{" "}
                       {(job.status === "failed" ||
                         (job.status === "pending" &&
@@ -519,13 +636,13 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
             ))}
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button
             onClick={() => setOpenConfirmP(true)}
             color="primary"
             variant="contained"
             disabled={isPausing}
-            sx={{ mr: 1 }}
+            sx={{ mr: 1, minWidth: 120 }}
           >
             {isPausing ? (
               <CircularProgress size="2rem" color="primary" />
@@ -536,18 +653,40 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
           <Button
             onClick={handleCloseDialog}
             color="primary"
-            variant="contained"
+            variant="outlined"
+            sx={{ minWidth: 120 }}
           >
             Cerrar
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={openConfirmP} onClose={() => setOpenConfirmP(false)}>
-        <DialogTitle>Confirmar pausa</DialogTitle>
-        <DialogContent>
-          <Typography>¿Seguro que deseas pausar la facturación?</Typography>
+      <Dialog 
+        open={openConfirmP} 
+        onClose={() => setOpenConfirmP(false)}
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            '@media (max-width:600px)': {
+              margin: 2,
+              width: 'calc(100% - 32px)',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          backgroundColor: 'warning.main', 
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
+          Confirmar pausa
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body1">
+            ¿Seguro que deseas pausar la facturación?
+          </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button
             onClick={() => {
               setOpenConfirmP(false);
@@ -556,10 +695,17 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
             color="primary"
             variant="contained"
             disabled={isPausing}
+            sx={{ minWidth: 120 }}
           >
             Confirmar
           </Button>
-          <Button onClick={() => setOpenConfirmP(false)}>Cancelar</Button>
+          <Button 
+            onClick={() => setOpenConfirmP(false)}
+            variant="outlined"
+            sx={{ minWidth: 120 }}
+          >
+            Cancelar
+          </Button>
         </DialogActions>
       </Dialog>
       <Stack
@@ -568,24 +714,64 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         spacing={2}
         sx={{
           display: Object.keys(groupedJobs).length > 0 ? "flex" : "none",
+          flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          gap: { xs: 1, sm: 2 },
+          mt: 2
         }}
       >
         <Button
           variant="contained"
           onClick={handlePreviousPage}
           disabled={currentPage === 1}
+          sx={{ 
+            minWidth: { xs: 'auto', sm: 120 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            py: 1,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+            },
+            '&:disabled': {
+              background: 'grey.300',
+              color: 'grey.500',
+            }
+          }}
         >
-          Anterior
+          ⬅️ Anterior
         </Button>
-        <Typography variant="body1" position="relative" top={7}>
-          Página {currentPage} de {totalPages}
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            fontWeight: 600,
+            color: 'primary.main'
+          }}
+        >
+          📄 Página {currentPage} de {totalPages}
         </Typography>
         <Button
           variant="contained"
           onClick={handleNextPage}
           disabled={currentPage === totalPages}
+          sx={{ 
+            minWidth: { xs: 'auto', sm: 120 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            py: 1,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+            },
+            '&:disabled': {
+              background: 'grey.300',
+              color: 'grey.500',
+            }
+          }}
         >
-          Próxima
+          Próxima ➡️
         </Button>
       </Stack>
     </div>

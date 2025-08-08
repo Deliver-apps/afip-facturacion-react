@@ -10,6 +10,9 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Home, Login } from "./pages";
 import { AppStore } from "./redux/store";
+import { ThemeProvider } from "@mui/material/styles";
+import { CssBaseline } from "@mui/material";
+import { theme } from "./theme";
 
 const App: React.FC = () => {
   const token = useSelector((state: AppStore) => state.auth.token);
@@ -42,31 +45,48 @@ const App: React.FC = () => {
   }, [token]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          fontSize: '1.2rem',
+          color: theme.palette.primary.main
+        }}>
+          Cargando...
+        </div>
+      </ThemeProvider>
+    );
   }
 
   return (
-    <Router>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute element={Home} isAuthenticated={isAuthenticated} />
-          }
-        />
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute element={Home} isAuthenticated={isAuthenticated} />
-          }
-        />
-        <Route
-          path="*"
-          element={<Navigate to={isAuthenticated ? "/home" : "/login"} />}
-        />
-      </Routes>
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute element={Home} isAuthenticated={isAuthenticated} />
+            }
+          />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute element={Home} isAuthenticated={isAuthenticated} />
+            }
+          />
+          <Route
+            path="*"
+            element={<Navigate to={isAuthenticated ? "/home" : "/login"} />}
+          />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 };
 

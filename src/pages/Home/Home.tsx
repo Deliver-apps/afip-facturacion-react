@@ -14,13 +14,32 @@ const Home: React.FC = () => {
         direction="column"
         justifyContent="center"
         alignItems="center"
-        spacing={4}
-        sx={{ width: "100%", mb: 5, mt: 3, p: 2 }}
+        spacing={{ xs: 2, md: 4 }}
+        sx={{ 
+          width: "100%", 
+          mb: { xs: 2, md: 5 }, 
+          mt: { xs: 1, md: 3 }, 
+          p: { xs: 1, md: 2 },
+          minHeight: '100vh',
+          backgroundColor: 'background.default'
+        }}
       >
-        <Box sx={{ width: "100%", maxWidth: "90%" }}>
+        <Box sx={{ 
+          width: "100%", 
+          maxWidth: { xs: "95%", sm: "90%", md: "80%" },
+          '@media (max-width:600px)': {
+            maxWidth: "100%"
+          }
+        }}>
           <BillForm updateCards={updateCards} setUpdateCards={setUpdateCards} />
         </Box>
-        <Box sx={{ width: "100%", maxWidth: "90%" }}>
+        <Box sx={{ 
+          width: "100%", 
+          maxWidth: { xs: "95%", sm: "90%", md: "80%" },
+          '@media (max-width:600px)': {
+            maxWidth: "100%"
+          }
+        }}>
           <CardList updateCards={updateCards} setUpdateCards={setUpdateCards} />
         </Box>
       </Stack>
