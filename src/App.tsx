@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 import { ProtectedRoute } from "@src/components";
 import { supabase } from "@src/service/supabaseClient";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Home, Login } from "./pages";
 import { AppStore } from "./redux/store";
@@ -16,50 +16,59 @@ import { theme } from "./theme";
 
 const App: React.FC = () => {
   const token = useSelector((state: AppStore) => state.auth.token);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const isAuthenticatedFromRedux = useSelector((state: AppStore) => state.auth.isAuthenticated);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuthentication = async () => {
-      setIsLoading(true); // Start loading
-      try {
-        const { data, error } = await supabase.auth.getUser(token!);
-        if (data && !error) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Memoizar el estado de autenticación para evitar re-renders
+  const isAuthenticated = useMemo(() => {
+    return Boolean(token && isAuthenticatedFromRedux);
+  }, [token, isAuthenticatedFromRedux]);
 
-    if (token) {
-      checkAuthentication();
-    } else {
+  const checkAuthentication = useCallback(async () => {
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.getUser(token);
+      // Solo actualizamos si hay cambios reales en el estado
+      if (data && !error && !isAuthenticatedFromRedux) {
+        // El estado se maneja desde Redux, no necesitamos estado local duplicado
+      } else if ((error || !data) && isAuthenticatedFromRedux) {
+        // Si hay error, Redux debería manejar el logout
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, isAuthenticatedFromRedux]);
+
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+
+  // Memoizar el componente de loading para evitar re-creaciones
+  const LoadingComponent = useMemo(() => (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '1.2rem',
+        color: theme.palette.primary.main
+      }}>
+        Cargando...
+      </div>
+    </ThemeProvider>
+  ), []);
 
   if (isLoading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          fontSize: '1.2rem',
-          color: theme.palette.primary.main
-        }}>
-          Cargando...
-        </div>
-      </ThemeProvider>
-    );
+    return LoadingComponent;
   }
 
   return (

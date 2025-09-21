@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -18,8 +18,8 @@ import lodash from "lodash";
 import CircleIcon from "@mui/icons-material/Circle";
 import * as cronParser from "cron-parser";
 import ReplayIcon from "@mui/icons-material/Replay";
-import { getUsers } from "@src/api/users";
 import { showErrorToast, showSuccessToast } from "@src/helpers/toastifyCustom";
+import { useUsers } from "@src/hooks";
 
 const HoverCard = styled(Card)({
   transition: "transform 0.3s ease",
@@ -43,40 +43,45 @@ interface User {
   real_name: string;
   username: string;
 }
+
 interface Props {
   updateCards: boolean;
   setUpdateCards: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
+const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) => {
+  // Usar el hook personalizado para usuarios
+  const { users } = useUsers();
+  
+  // Estados principales
   const [groupedJobs, setGroupedJobs] = useState<Record<number, Job[]>>({});
-  const [oldGroupedJobs, setOldGroupedJobs] = useState<Record<number, Job[]>>(
-    {},
-  );
-  const [labelButton, setLabelButton] = useState<string>(
-    "Facturaciones Previas",
-  );
-  const [tempGroupedJobs, setTempGroupedJobs] = useState<Record<number, Job[]>>(
-    {},
-  );
+  const [oldGroupedJobs, setOldGroupedJobs] = useState<Record<number, Job[]>>({});
+  const [labelButton, setLabelButton] = useState<string>("Facturaciones Previas");
+  const [tempGroupedJobs, setTempGroupedJobs] = useState<Record<number, Job[]>>({});
   const [showButton, setShowButton] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Estados de diálogos
   const [openDialog, setOpenDialog] = useState(false);
   const [currentOpenDialog, setCurrentOpenDialog] = useState(0);
-  const [users, setUsers] = useState<User[]>([]);
-  const itemsPerPage = 40;
+  const [openConfirmP, setOpenConfirmP] = useState(false);
+  
+  // Estados de loading
   const [isRetrying, setIsRetrying] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
-  const [openConfirmP, setOpenConfirmP] = useState(false);
-  const formatMoney = (value: string) => {
+  
+  // Constantes
+  const itemsPerPage = 40;
+  // Memoizar funciones utilitarias
+  const formatMoney = useCallback((value: string) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: "ARS",
       minimumFractionDigits: 2,
     }).format(parseFloat(value));
-  };
+  }, []);
 
-  const getNextCronDate = (cronExpression: string, createdAt: string) => {
+  const getNextCronDate = useCallback((cronExpression: string, createdAt: string) => {
     try {
       // Parse the cron expression
       const interval = cronParser.parseExpression(cronExpression, {
@@ -111,9 +116,9 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       console.error("Invalid cron expression:", error);
       return null;
     }
-  };
+  }, []);
 
-  const isBeforeToday = (date: string) => {
+  const isBeforeToday = useCallback((date: string) => {
     const formatter = new Intl.DateTimeFormat("es-AR", {
       timeZone: "America/Argentina/Buenos_Aires",
       year: "numeric",
@@ -122,52 +127,40 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     });
 
     return date < formatter.format(new Date());
-  };
+  }, []);
 
-  const items = React.useMemo(() => {
+  // Memoizar el cálculo de items que es muy pesado
+  const items = useMemo(() => {
+    if (!groupedJobs || Object.keys(groupedJobs).length === 0) return [];
+    
+    const currentMonth = new Date().toLocaleDateString("es-AR", {
+      month: "short",
+    });
+
     return Object.entries(groupedJobs).map(([key, value]) => {
-      const total = value.reduce(
-        (acc, curr) => acc + parseFloat(curr.valueToBill),
-        0,
-      );
-
+      const total = value.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
       const lastJob = value[value.length - 1];
+      
+      if (!lastJob) return null;
 
-      const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString(
-        "es-AR",
-        {
-          month: "long",
-        },
-      );
-      const currentMonth = new Date().toLocaleDateString("es-AR", {
-        month: "short",
+      const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString("es-AR", {
+        month: "long",
       });
-      const formattedTotal = new Intl.NumberFormat("es-AR", {
-        style: "currency",
-        currency: "ARS",
-        minimumFractionDigits: 2,
-      }).format(total);
-
+      
       const user = users.find((user) => user.id === Number(key));
       const allFinished = value.every((job) => job.status === "completed");
 
       const maxDateJob = lodash.maxBy(value, (job) => new Date(job.createdAt));
-      const active = getNextCronDate(
-        maxDateJob?.cronExpression ?? "",
-        maxDateJob?.createdAt ?? "",
-      )?.includes(currentMonth);
+      const active = maxDateJob ? 
+        getNextCronDate(maxDateJob.cronExpression, maxDateJob.createdAt)?.includes(currentMonth) : 
+        false;
+        
       const succesJobs = value.filter((job) => job.status === "completed");
-      const failedOrPendingJobs = value.filter(
-        (job) => job.status !== "completed",
-      );
-      const sumSuccesJobs = succesJobs.reduce(
-        (acc, curr) => acc + parseFloat(curr.valueToBill),
-        0,
-      );
-      const sumFailedOrPendingJobs = failedOrPendingJobs.reduce(
-        (acc, curr) => acc + parseFloat(curr.valueToBill),
-        0,
-      );
+      const failedOrPendingJobs = value.filter((job) => job.status !== "completed");
+      
+      const sumSuccesJobs = succesJobs.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
+      const sumFailedOrPendingJobs = failedOrPendingJobs.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
+      
       return {
         id: key,
         title: `Fact. ${active ? "" : "Hasta"} ${
@@ -177,89 +170,85 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
         subtitle: `${user?.real_name}`,
         finished: allFinished,
         content: `${value.length}`,
-        total: `${formattedTotal}`,
+        total: formatMoney(total.toString()),
         active,
-        sumSuccesJobs: `${formatMoney(sumSuccesJobs.toString())}`,
-        sumFailedOrPendingJobs: `${formatMoney(sumFailedOrPendingJobs.toString())}`,
+        sumSuccesJobs: formatMoney(sumSuccesJobs.toString()),
+        sumFailedOrPendingJobs: formatMoney(sumFailedOrPendingJobs.toString()),
       };
-    });
-  }, [groupedJobs, users]);
+    }).filter(Boolean);
+  }, [groupedJobs, users, getNextCronDate, formatMoney]);
 
-  const totalPages = Math.ceil(items.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = items.slice(startIndex, startIndex + itemsPerPage);
+  // Memoizar cálculos de paginación
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(items.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentItems = items.slice(startIndex, startIndex + itemsPerPage);
+    
+    return { totalPages, currentItems };
+  }, [items, currentPage, itemsPerPage]);
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
+  // Memoizar funciones de paginación
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  }, []);
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(paginationData.totalPages, prev + 1));
+  }, [paginationData.totalPages]);
 
-  const handleOpenDialog = (key: string) => {
+  const handleOpenDialog = useCallback((key: string) => {
     setCurrentOpenDialog(parseInt(key));
     setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
-
-  useEffect(() => {
-    getUsers()
-      .then((data) => {
-        setUsers(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-      });
   }, []);
+
+  const handleCloseDialog = useCallback(() => {
+    setOpenDialog(false);
+  }, []);
+
+  // Los usuarios se cargan desde el hook useUsers, no necesitamos este useEffect
+
+  // Memoizar la función de carga de facturas
+  const loadFacturas = useCallback(async (forceRefresh = false) => {
+    try {
+      const data: Job[] = await getFacturas(forceRefresh);
+      const orderByStatus = lodash.orderBy(data, ["status"], ["desc"]);
+      const currentMonth = new Date().toLocaleDateString("es-AR", {
+        month: "short",
+      });
+      
+      // Filtrar trabajos actuales y antiguos de manera más eficiente
+      const currentJobs: Job[] = [];
+      const oldJobs: Job[] = [];
+      
+      orderByStatus.forEach((job) => {
+        const nextDate = getNextCronDate(job.cronExpression, job.createdAt);
+        const isCurrentMonth = nextDate?.includes(currentMonth);
+        
+        if (isCurrentMonth || job.status === "failed" || job.status === "pending") {
+          currentJobs.push(job);
+        } else if (job.status === "completed") {
+          oldJobs.push(job);
+        }
+      });
+      
+      const groupedData = lodash.groupBy(currentJobs, "userId");
+      const groupedDataOld = lodash.groupBy(oldJobs, "userId");
+      
+      setGroupedJobs(groupedData);
+      setOldGroupedJobs(groupedDataOld);
+      setShowButton(true);
+    } catch (error) {
+      console.error("Error fetching facturas:", error);
+    } finally {
+      setUpdateCards(false);
+    }
+  }, [getNextCronDate, setUpdateCards]);
 
   useEffect(() => {
     if (updateCards) {
-      getFacturas()
-        .then((data: Job[]) => {
-          const orderByStatus = lodash.orderBy(data, ["status"], ["desc"]);
-          const currentMonth = new Date().toLocaleDateString("es-AR", {
-            month: "short",
-          });
-          const filterByExecutionDate = lodash.filter(
-            orderByStatus,
-            (job) =>
-              getNextCronDate(job.cronExpression, job.createdAt)!.includes(
-                currentMonth,
-              ) ||
-              job.status === "failed" ||
-              job.status === "pending",
-          );
-          const filterByExecutionDateOld = lodash.filter(
-            orderByStatus,
-            (job) =>
-              !getNextCronDate(job.cronExpression, job.createdAt)!.includes(
-                currentMonth,
-              ) && job.status === "completed",
-          );
-          const groupedDataOld = lodash.groupBy(
-            filterByExecutionDateOld,
-            "userId",
-          );
-          const groupedData = lodash.groupBy(filterByExecutionDate, "userId");
-          setOldGroupedJobs({ ...groupedDataOld });
-          setGroupedJobs({ ...groupedData }); // Ensure new reference
-          setUpdateCards(false); // Reset immediately
-          setShowButton(true);
-        })
-        .catch((error) => {
-          console.error("Error fetching facturas:", error);
-          setUpdateCards(false); // Reset on error
-        });
+      loadFacturas();
     }
-  }, [updateCards, setUpdateCards]);
+  }, [updateCards, loadFacturas]);
 
   useEffect(() => {
     if (openDialog) {
@@ -269,11 +258,11 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
     }
   }, [currentOpenDialog, openDialog]);
 
-  const filterByKey = (key: number) => {
+  const filterByKey = useCallback((key: number) => {
     return groupedJobs[key] || [];
-  };
+  }, [groupedJobs]);
 
-  const selectColor = (status: string) => {
+  const selectColor = useCallback((status: string) => {
     switch (status) {
       case "pending":
         return "warning.main";
@@ -284,81 +273,81 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       default:
         return "error.main";
     }
-  };
+  }, []);
 
   // const getDaysDifference = (date1: Date, date2: Date) => {
   //   const oneDay = 1000 * 60 * 60 * 24;
   //   return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
   // };
 
-  const retryJob = async (jobId: number, jobUserId: number) => {
+  const retryJob = useCallback(async (jobId: number, jobUserId: number) => {
     console.log("Retrying job... " + jobId);
     setIsRetrying(true);
+    
     try {
-      const job = groupedJobs[jobUserId].find((job) => job.id === jobId);
       const response = await retryFactura(jobId);
 
       if (response.status === 201) {
-        job!.status = "completed";
-        setGroupedJobs({ ...groupedJobs });
+        // Actualizar el estado del job de manera inmutable
+        setGroupedJobs(prevJobs => ({
+          ...prevJobs,
+          [jobUserId]: prevJobs[jobUserId].map(job => 
+            job.id === jobId ? { ...job, status: "completed" } : job
+          )
+        }));
         showSuccessToast("Job Ejecutado Correctamente", "top-right", 3000);
       } else {
         showErrorToast("Error al reintentar el job", "top-right", 3000);
       }
-      setIsRetrying(false);
     } catch (error) {
-      console.error("Error fetching facturas:", error);
-      setUpdateCards(false); // Reset on error
-      setIsRetrying(false);
+      console.error("Error retrying job:", error);
       showErrorToast("Error al reintentar el job", "top-right", 3000);
+    } finally {
+      setIsRetrying(false);
     }
-  };
+  }, []);
 
-  const showOldCards = () => {
+  const showOldCards = useCallback(() => {
     if (labelButton === "Facturaciones Actuales") {
       setLabelButton("Facturaciones Previas");
-      setGroupedJobs({ ...tempGroupedJobs });
-      setTempGroupedJobs({ ...groupedJobs });
-      return;
+      setTempGroupedJobs(groupedJobs);
+      setGroupedJobs(tempGroupedJobs);
+    } else {
+      setLabelButton("Facturaciones Actuales");
+      setTempGroupedJobs(groupedJobs);
+      setGroupedJobs(oldGroupedJobs);
     }
-    setLabelButton("Facturaciones Actuales");
-    setTempGroupedJobs({ ...groupedJobs });
-    setGroupedJobs(oldGroupedJobs);
-  };
+  }, [labelButton, groupedJobs, tempGroupedJobs, oldGroupedJobs]);
 
-  const handlePauseBilling = async () => {
+  const handlePauseBilling = useCallback(async () => {
     console.log("Pausing billing...");
     setIsPausing(true);
+    
     try {
       const jobsFromUser = filterByKey(currentOpenDialog).map((job) => job.id);
-      console.log("Pausing billing...");
       const response = await pauseBilling(jobsFromUser);
-      console.log(response);
+      
       if (response.message === "Jobs Paused successfully") {
-        showSuccessToast(
-          "Facturación pausada correctamente",
-          "top-right",
-          3000,
-        );
-        const updateToFailed = filterByKey(currentOpenDialog).map((job) => ({
-          ...job,
-          status: job.status === "completed" ? "completed" : "failed",
-        }));
-
-        setGroupedJobs((prev) => ({
+        showSuccessToast("Facturación pausada correctamente", "top-right", 3000);
+        
+        // Actualizar jobs de manera inmutable
+        setGroupedJobs(prev => ({
           ...prev,
-          [currentOpenDialog]: updateToFailed,
+          [currentOpenDialog]: prev[currentOpenDialog].map(job => ({
+            ...job,
+            status: job.status === "completed" ? "completed" : "failed",
+          }))
         }));
       } else {
         showErrorToast("Error al pausar la facturación", "top-right", 3000);
       }
-      setIsPausing(false);
     } catch (error) {
       console.error("Error pausing billing:", error);
-      setIsPausing(false);
       showErrorToast("Error al pausar la facturación", "top-right", 3000);
+    } finally {
+      setIsPausing(false);
     }
-  };
+  }, [currentOpenDialog, filterByKey]);
 
   return (
     <div>
@@ -396,7 +385,7 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
           }
         }}
       >
-        {currentItems.map((item) => (
+        {paginationData.currentItems.map((item) => (
           <HoverCard
             key={item.id}
             sx={{
@@ -750,12 +739,12 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
             color: 'primary.main'
           }}
         >
-          📄 Página {currentPage} de {totalPages}
+          📄 Página {currentPage} de {paginationData.totalPages}
         </Typography>
         <Button
           variant="contained"
           onClick={handleNextPage}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === paginationData.totalPages}
           sx={{ 
             minWidth: { xs: 'auto', sm: 120 },
             fontSize: { xs: '0.875rem', sm: '1rem' },
@@ -776,6 +765,8 @@ const CardList: React.FC<Props> = ({ updateCards, setUpdateCards }) => {
       </Stack>
     </div>
   );
-};
+});
+
+CardList.displayName = 'CardList';
 
 export default CardList;

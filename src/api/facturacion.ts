@@ -1,14 +1,26 @@
 import { config } from "@src/helpers/config";
 import { supabase } from "@src/service/supabaseClient";
+import { apiCache } from "@src/services";
 import axios, { AxiosResponse } from "axios";
 import Cookies from "js-cookie";
 
-export const getFacturas = async () => {
+export const getFacturas = async (forceRefresh = false) => {
+  const cacheKey = 'facturas';
+  
+  // Intentar obtener desde cache primero (cache más corto para facturas)
+  if (!forceRefresh) {
+    const cachedFacturas = apiCache.get(cacheKey);
+    if (cachedFacturas) {
+      return cachedFacturas;
+    }
+  }
+
   try {
     const tokenFromCookie = Cookies.get("authToken");
     if (!tokenFromCookie) {
       return [];
     }
+    
     const { data, error } = await supabase.auth.getUser(tokenFromCookie);
 
     if (error) {
@@ -23,6 +35,9 @@ export const getFacturas = async () => {
     const response = await axios.get(
       `${config.apiUrl}api/jobs?external=${external}`,
     );
+
+    // Cache por 2 minutos para facturas (datos más dinámicos)
+    apiCache.set(cacheKey, response.data, 2 * 60 * 1000);
 
     return response.data;
   } catch (error) {
@@ -41,7 +56,10 @@ export const createFactura = async (data: {
 }) => {
   try {
     const response = await axios.post(`${config.apiUrl}api/bill`, data);
-
+    
+    // Invalidar cache de facturas después de crear una nueva
+    apiCache.clear('facturas');
+    
     return response.data;
   } catch (error) {
     console.error("Error creating Factura: ", error);
@@ -61,6 +79,9 @@ export const retryFactura = async (
     const response = await axios.post(`${config.apiUrl}api/bill/retry`, {
       jobId,
     });
+
+    // Invalidar cache de facturas después de reintentar
+    apiCache.clear('facturas');
 
     return response;
   } catch (error) {
@@ -88,6 +109,9 @@ export const pauseBilling = async (list: number[]) => {
       },
     );
 
+    // Invalidar cache de facturas después de pausar
+    apiCache.clear('facturas');
+
     return response.data;
   } catch (error) {
     console.error("Error pausing billing:", error);
@@ -107,6 +131,9 @@ export const deleteFacturasFromUser = async (userId: number) => {
         Authorization: `Bearer ${tokenFromCookie}`,
       },
     });
+
+    // Invalidar cache de facturas después de eliminar
+    apiCache.clear('facturas');
 
     return response.data;
   } catch (error) {

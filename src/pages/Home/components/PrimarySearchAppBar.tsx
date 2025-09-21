@@ -14,7 +14,7 @@ import * as React from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-export default function PrimarySearchAppBar() {
+const PrimarySearchAppBar: React.FC = React.memo(() => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] =
     React.useState<null | HTMLElement>(null);
@@ -39,8 +39,9 @@ export default function PrimarySearchAppBar() {
 
   const handleMenuClickClose = () => {
     setAnchorEl(null);
-    dispatch(logout());
-    navigate("/login");
+    dispatch(logout()).then(() => {
+      navigate("/login");
+    });
     handleMobileMenuClose();
   };
 
@@ -220,4 +221,8 @@ export default function PrimarySearchAppBar() {
       {renderMenu}
     </Box>
   );
-}
+});
+
+PrimarySearchAppBar.displayName = 'PrimarySearchAppBar';
+
+export default PrimarySearchAppBar;

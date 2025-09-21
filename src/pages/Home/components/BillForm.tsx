@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Box,
   Stack,
@@ -26,7 +26,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { Autocomplete } from "@mui/material";
-import { getOkFromAfipSdk, getUsers } from "@src/api/users";
+import { getOkFromAfipSdk } from "@src/api/users";
 import { createFactura, deleteFacturasFromUser } from "@src/api/facturacion";
 import { showErrorToast, showSuccessToast } from "@src/helpers/toastifyCustom";
 import CreateUserDialog from "./CreateUserDialog";
@@ -34,6 +34,7 @@ import {
   deleteUserFacturacion,
   updateUserFacturacion,
 } from "@src/api/usersFacturacion";
+import { useUsers } from "@src/hooks";
 
 // Define the User type based on the expected structure from the "users" endpoint
 interface User {
@@ -48,88 +49,74 @@ interface Props {
   setUpdateCards: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
+const BillForm: React.FC<Props> = React.memo(({ setUpdateCards }) => {
+  // Usar el hook personalizado para usuarios
+  const { users, loading: loadingUsers, error: usersError, refreshUsers } = useUsers();
+  
+  // Estados del formulario
   const [showPassword, setShowPassword] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
-  const [usersError, setUsersError] = useState<string>("");
-
-  const [selectedUser, setSelectedUser] = useState<User | null | undefined>(
-    null,
-  );
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [valorMinimo, setValorMinimo] = useState<string>("");
   const [valorMaximo, setValorMaximo] = useState<string>("");
   const [minHour, setMinHour] = useState<number>(9);
   const [maxHour, setMaxHour] = useState<number>(21);
   const [facturasTotales, setFacturasTotales] = useState<number | "">("");
   const [formError, setFormError] = useState<string>("");
-  const [selectedDateInicio, setSelectedDateInicio] = useState<Date | null>(
-    null,
-  );
+  const [selectedDateInicio, setSelectedDateInicio] = useState<Date | null>(null);
   const [selectedDateFin, setSelectedDateFin] = useState<Date | null>(null);
+  
+  // Estados de diálogos
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editableUser, setEditableUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Estados de loading
   const [loadingSave, setLoadingSave] = useState(false);
   const [loadingVerify, setLoadingVerify] = useState(false);
-  // Handle delete icon click
-  const handleDeleteClick = () => {
+  // Memoizar funciones para evitar re-renders
+  const handleDeleteClick = useCallback(() => {
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  // Handle confirm
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = useCallback(async () => {
     const id = selectedUser?.id;
     if (!id) {
       showErrorToast("Seleccione un usuario", "top-right", 2000);
       return;
     }
-    deleteFacturasFromUser(id)
-      .then(() => {
-        showSuccessToast(
-          "Facturas Eliminadas Correctamente",
-          "top-right",
-          4_000,
-        );
-        setDeleteDialogOpen(false);
-        setTimeout(() => {
-          setUpdateCards(true);
-        }, 1_000);
-      })
-      .catch((error) => {
-        showErrorToast("Error al eliminar facturas", "top-right", 2000);
-        console.error("Error:", error);
-        setDeleteDialogOpen(false);
-      });
-    deleteUserFacturacion(id)
-      .then(() => {
-        showSuccessToast("Usuario Eliminado Correctamente", "top-right", 2000);
-        setDeleteDialogOpen(false);
-        setTimeout(() => {
-          setUpdateCards(true);
-        }, 1_000);
-      })
-      .catch((error) => {
-        showErrorToast("Error al eliminar usuario", "top-right", 2000);
-        console.error("Error:", error);
-        setDeleteDialogOpen(false);
-      });
-  };
 
-  // Handle cancel
-  const handleCancelDelete = () => {
+    try {
+      await Promise.all([
+        deleteFacturasFromUser(id),
+        deleteUserFacturacion(id)
+      ]);
+      
+      showSuccessToast("Usuario y facturas eliminados correctamente", "top-right", 3000);
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
+      
+      // Actualizar inmediatamente sin timeout
+      setUpdateCards(true);
+      refreshUsers(); // Refrescar la lista de usuarios
+    } catch (error) {
+      showErrorToast("Error al eliminar usuario", "top-right", 2000);
+      console.error("Error:", error);
+      setDeleteDialogOpen(false);
+    }
+  }, [selectedUser?.id, setUpdateCards, refreshUsers]);
+
+  const handleCancelDelete = useCallback(() => {
     setDeleteDialogOpen(false);
-  };
+  }, []);
 
-  const handleEditClick = () => {
+  const handleEditClick = useCallback(() => {
     if (selectedUser) {
       setEditableUser(selectedUser);
       setEditDialogOpen(true);
     }
-  };
+  }, [selectedUser]);
 
-  // Optional: submit edited data
-  const handleSave = () => {
+  const handleSave = useCallback(async () => {
     const id = selectedUser?.id;
 
     if (!id || !editableUser) {
@@ -137,161 +124,164 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
       return;
     }
 
-    setLoadingSave(true); // ✅ Start loading
+    setLoadingSave(true);
 
-    updateUserFacturacion(id, editableUser)
-      .then(() => {
-        showSuccessToast(
-          "Usuario Actualizado Correctamente",
-          "top-right",
-          3000,
-        );
-        setEditDialogOpen(false);
-      })
-      .catch((error) => {
-        showErrorToast("Error al actualizar usuario", "top-right", 3000);
-        console.error("Error:", error);
-      })
-      .finally(() => {
-        fetchUsers(); // ✅ Refresh the list
+    try {
+      await updateUserFacturacion(id, editableUser);
+      showSuccessToast("Usuario Actualizado Correctamente", "top-right", 3000);
+      setEditDialogOpen(false);
+      
+      // Refrescar la lista de usuarios
+      refreshUsers();
+      
+      // Actualizar el usuario seleccionado si está en la nueva lista
+      const updatedUser = users.find((u) => u.id === id);
+      if (updatedUser) {
+        setSelectedUser({ ...updatedUser, ...editableUser });
+      }
+    } catch (error) {
+      showErrorToast("Error al actualizar usuario", "top-right", 3000);
+      console.error("Error:", error);
+    } finally {
+      setLoadingSave(false);
+    }
+  }, [selectedUser?.id, editableUser, refreshUsers, users]);
 
-        setLoadingSave(false); // ✅ End loading
-
-        setUsers((prevUsers) => {
-          const updatedUser = prevUsers.find((u) => u.id === id);
-          if (updatedUser) {
-            setSelectedUser(updatedUser);
-          }
-          return prevUsers;
-        });
-      });
-  };
-
-  const fetchUsers = () => {
-    setLoadingUsers(true);
-
-    getUsers()
-      .then((data) => {
-        setUsers(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-        setFormError("Error al cargar usuarios");
-      })
-      .finally(() => setLoadingUsers(false));
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleRandomFacturas = () => {
+  const handleRandomFacturas = useCallback(() => {
+    if (!valorMaximo) return;
+    
     const min = parseFloat(valorMaximo) * 0.000011;
     const max = parseFloat(valorMaximo) * 0.0000125;
     const randomNumber = Math.random() * (max - min) + min;
     setFacturasTotales(Math.floor(randomNumber) + 1);
-  };
+  }, [valorMaximo]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (Number(valorMinimo) > Number(valorMaximo)) {
       setFormError('"Valor mínimo" should not exceed "Valor máximo".');
-      setUsersError("");
       return;
     }
 
     if (!selectedUser) {
       setFormError("Seleccione un usuario.");
-      setUsersError("");
       return;
     }
 
     setFormError("");
+    
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     const dateInit = selectedDateInicio ? selectedDateInicio : tomorrow;
     const formatedDateInicio = `${dateInit.getFullYear()}-${dateInit.getMonth() + 1}-${dateInit.getDate()}`;
-    const formatedDateFin = `${selectedDateFin?.getFullYear()}-${selectedDateFin?.getMonth() || 0 + 1}-${selectedDateFin?.getDate()}`;
+    const formatedDateFin = selectedDateFin ? 
+      `${selectedDateFin.getFullYear()}-${selectedDateFin.getMonth() + 1}-${selectedDateFin.getDate()}` : 
+      formatedDateInicio;
 
     const parsedData = {
-      userId: selectedUser?.id,
+      userId: selectedUser.id,
       minBill: Number(valorMinimo),
       maxBill: Number(valorMaximo),
       billNumber: Number(facturasTotales),
       startDate: formatedDateInicio,
-      endDate: formatedDateFin!,
+      endDate: formatedDateFin,
     };
 
-    createFactura(parsedData)
-      .then(() => {
-        showSuccessToast("Factura Creada Correctamente", "top-right", 2000);
-        setSelectedUser(null);
-        setFacturasTotales("");
-        setFormError("");
-        setTimeout(() => {
-          setUpdateCards(true);
-        }, 1000);
-      })
-      .catch((error) => {
-        showErrorToast("Error al crear factura", "top-right", 2000);
-        console.error("Error:", error);
-      });
-  };
+    try {
+      await createFactura(parsedData);
+      showSuccessToast("Factura Creada Correctamente", "top-right", 2000);
+      
+      // Limpiar formulario
+      setSelectedUser(null);
+      setFacturasTotales("");
+      setValorMinimo("");
+      setValorMaximo("");
+      setSelectedDateInicio(null);
+      setSelectedDateFin(null);
+      setFormError("");
+      
+      // Actualizar inmediatamente
+      setUpdateCards(true);
+    } catch (error) {
+      showErrorToast("Error al crear factura", "top-right", 2000);
+      console.error("Error:", error);
+    }
+  }, [valorMinimo, valorMaximo, selectedUser, facturasTotales, selectedDateInicio, selectedDateFin, setUpdateCards]);
 
-  const handleVerify = () => {
+  const handleVerify = useCallback(async () => {
     const username = selectedUser?.username;
     if (!username) {
       showErrorToast("Seleccione un usuario.", "top-right", 2000);
       return;
     }
+    
     setLoadingVerify(true);
-    getOkFromAfipSdk(username)
-      .then((response) => {
-        if (!response) {
-          showErrorToast(
-            "La verificación falló. Intente nuevamente o comuniquese con el Admin.",
-            "top-right",
-            4_000,
-          );
-          setLoadingVerify(false);
-          return;
-        }
-        showSuccessToast(
-          "La verificación se realizó correctamente. Lista para facturar!",
-          "top-right",
-          4_000,
-        );
-        setLoadingVerify(false);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
+    try {
+      const response = await getOkFromAfipSdk(username);
+      if (!response) {
         showErrorToast(
-          "Hubo un error en el servidor. Intente nuevamente o comuniquese con el Admin.",
+          "La verificación falló. Intente nuevamente o comuniquese con el Admin.",
           "top-right",
-          4_000,
+          4000,
         );
-        setLoadingVerify(false);
-      });
-  };
+        return;
+      }
+      showSuccessToast(
+        "La verificación se realizó correctamente. Lista para facturar!",
+        "top-right",
+        4000,
+      );
+    } catch (error) {
+      console.error("Error:", error);
+      showErrorToast(
+        "Hubo un error en el servidor. Intente nuevamente o comuniquese con el Admin.",
+        "top-right",
+        4000,
+      );
+    } finally {
+      setLoadingVerify(false);
+    }
+  }, [selectedUser?.username]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setSelectedUser(null);
     setValorMinimo("");
     setValorMaximo("");
     setFacturasTotales("");
     setFormError("");
-  };
+    setSelectedDateInicio(null);
+    setSelectedDateFin(null);
+  }, []);
 
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const nextDay = new Date(today);
-  nextDay.setDate(today.getDate() + 1);
-  const maxDayFromCurrentMonth = new Date(today);
-  maxDayFromCurrentMonth.setMonth(today.getMonth() + 1);
-  maxDayFromCurrentMonth.setDate(0);
+  // Memoizar fechas para evitar cálculos en cada render
+  const dateCalculations = useMemo(() => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const maxDayFromCurrentMonth = new Date(today);
+    maxDayFromCurrentMonth.setMonth(today.getMonth() + 1);
+    maxDayFromCurrentMonth.setDate(0);
+    
+    return { today, tomorrow, maxDayFromCurrentMonth };
+  }, []);
+
+  // Memoizar validaciones del formulario
+  const isFormValid = useMemo(() => {
+    return selectedUser &&
+           valorMinimo &&
+           valorMaximo &&
+           Number(valorMaximo) >= Number(valorMinimo) &&
+           facturasTotales;
+  }, [selectedUser, valorMinimo, valorMaximo, facturasTotales]);
+
+  // Memoizar si el botón random debe estar habilitado
+  const isRandomEnabled = useMemo(() => {
+    return valorMinimo && 
+           valorMaximo && 
+           Number(valorMinimo) <= Number(valorMaximo);
+  }, [valorMinimo, valorMaximo]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -484,11 +474,7 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                       <IconButton
                         onClick={handleRandomFacturas}
                         edge="start"
-                        disabled={
-                          !valorMinimo ||
-                          !valorMaximo ||
-                          Number(valorMinimo) > Number(valorMaximo)
-                        }
+                        disabled={!isRandomEnabled}
                         sx={{
                           color: 'secondary.main',
                           '&:hover': {
@@ -511,7 +497,7 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   value={selectedDateInicio}
                   onChange={(newValue) => setSelectedDateInicio(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={tomorrow}
+                  minDate={dateCalculations.tomorrow}
                   sx={{
                     flex: 1,
                     '& .MuiOutlinedInput-root': {
@@ -525,7 +511,7 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   value={selectedDateFin}
                   onChange={(newValue) => setSelectedDateFin(newValue)}
                   format="dd/MM/yyyy"
-                  minDate={tomorrow}
+                  minDate={dateCalculations.tomorrow}
                   sx={{
                     flex: 1,
                     '& .MuiOutlinedInput-root': {
@@ -582,13 +568,7 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
                   variant="contained"
                   color="primary"
                   type="submit"
-                  disabled={
-                    !selectedUser ||
-                    !valorMinimo ||
-                    !valorMaximo ||
-                    Number(valorMaximo) < Number(valorMinimo) ||
-                    !facturasTotales
-                  }
+                  disabled={!isFormValid}
                   sx={{
                     background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
@@ -961,6 +941,8 @@ const BillForm: React.FC<Props> = ({ setUpdateCards }) => {
       </Dialog>
     </LocalizationProvider>
   );
-};
+});
+
+BillForm.displayName = 'BillForm';
 
 export default BillForm;

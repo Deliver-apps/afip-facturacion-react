@@ -1,14 +1,26 @@
 import { config } from "@src/helpers/config";
 import { supabase } from "@src/service/supabaseClient";
+import { apiCache } from "@src/services";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-export const getUsers = async () => {
+export const getUsers = async (forceRefresh = false) => {
+  const cacheKey = 'users';
+  
+  // Intentar obtener desde cache primero
+  if (!forceRefresh) {
+    const cachedUsers = apiCache.get(cacheKey);
+    if (cachedUsers) {
+      return cachedUsers;
+    }
+  }
+
   try {
     const tokenFromCookie = Cookies.get("authToken");
     if (!tokenFromCookie) {
       return [];
     }
+    
     const { data, error } = await supabase.auth.getUser(tokenFromCookie);
 
     if (error) {
@@ -23,6 +35,10 @@ export const getUsers = async () => {
     const response = await axios.get(
       `${config.apiUrl}api/users?external=${external}`,
     );
+    
+    // Guardar en cache por 5 minutos
+    apiCache.set(cacheKey, response.data, 5 * 60 * 1000);
+    
     return response.data;
   } catch (error) {
     console.error("Error getting Users: ", error);
