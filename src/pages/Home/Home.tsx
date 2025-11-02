@@ -1,15 +1,10 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { BillForm, CardList, PrimarySearchAppBar } from "./components";
 import { Box, Stack } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 
 const Home: React.FC = React.memo(() => {
   const [updateCards, setUpdateCards] = useState<boolean>(true);
-
-  // Memoizar el callback para evitar re-renders en componentes hijos
-  const handleUpdateCards = useCallback((value: boolean) => {
-    setUpdateCards(value);
-  }, []);
 
   // Memoizar los estilos para evitar re-creaciones
   const containerStyles = useMemo(() => ({
@@ -43,13 +38,13 @@ const Home: React.FC = React.memo(() => {
         <Box sx={boxStyles}>
           <BillForm 
             updateCards={updateCards} 
-            setUpdateCards={handleUpdateCards} 
+            setUpdateCards={setUpdateCards} 
           />
         </Box>
         <Box sx={boxStyles}>
           <CardList 
             updateCards={updateCards} 
-            setUpdateCards={handleUpdateCards} 
+            setUpdateCards={setUpdateCards} 
           />
         </Box>
       </Stack>

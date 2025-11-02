@@ -57,7 +57,7 @@ export const login = createAsyncThunk(
 // Async thunk for logout
 export const logout = createAsyncThunk(
   "auth/logout",
-  async (_, thunkAPI) => {
+  async () => {
     try {
       // Sign out from Supabase
       await supabase.auth.signOut();

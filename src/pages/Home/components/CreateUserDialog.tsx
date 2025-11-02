@@ -15,7 +15,7 @@ import {
   IconButton,
 } from "@mui/material";
 import CheckCircle from "@mui/icons-material/CheckCircle";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Cookies from "js-cookie";
 import { supabase } from "@src/service/supabaseClient";
 import {
@@ -37,7 +37,7 @@ interface NewUserPayload {
   username: string | null;
 }
 
-const CreateUserDialog = () => {
+const CreateUserDialog = React.memo(() => {
   const [showPassword, setShowPassword] = useState(true);
   const [open, setOpen] = useState(false);
   const [isExternalUser, setIsExternalUser] = useState<boolean>(false);
@@ -89,7 +89,7 @@ const CreateUserDialog = () => {
     username: null,
   });
 
-  const handleChange =
+  const handleChange = useCallback(
     (key: keyof NewUserPayload) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const target = e.target as HTMLInputElement;
@@ -97,10 +97,10 @@ const CreateUserDialog = () => {
         target.type === "checkbox" ? target.checked : target.value || null;
 
       setFormData((prev) => ({ ...prev, [key]: value }));
-    };
+    }, []);
 
   useEffect(() => {
-    if (error && error?.length > 0) {
+    if (error) {
       showErrorToast(error, "top-right", 5_000);
       setIsLoading(false);
     }
@@ -483,9 +483,11 @@ const CreateUserDialog = () => {
       </Dialog>
     </>
   );
-};
+});
 
-const ProcessItem = ({
+CreateUserDialog.displayName = 'CreateUserDialog';
+
+const ProcessItem = React.memo(({
   label,
   active,
   success,
@@ -506,6 +508,8 @@ const ProcessItem = ({
     )}
     <Typography variant="body2">{label}</Typography>
   </Box>
-);
+));
+
+ProcessItem.displayName = 'ProcessItem';
 
 export default CreateUserDialog;

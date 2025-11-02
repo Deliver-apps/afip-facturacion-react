@@ -22,9 +22,13 @@ import { showErrorToast, showSuccessToast } from "@src/helpers/toastifyCustom";
 import { useUsers } from "@src/hooks";
 
 const HoverCard = styled(Card)({
-  transition: "transform 0.3s ease",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  willChange: "transform",
+  backfaceVisibility: "hidden",
+  transform: "translateZ(0)",
   "&:hover": {
-    transform: "scale(1.05)",
+    transform: "scale3d(1.05, 1.05, 1) translateZ(0)",
+    boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
   },
 });
 
@@ -72,6 +76,9 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
   
   // Constantes
   const itemsPerPage = 40;
+  
+  // Caché para getNextCronDate para evitar cálculos repetidos
+  const cronDateCache = useMemo(() => new Map<string, string | null>(), []);
   // Memoizar funciones utilitarias
   const formatMoney = useCallback((value: string) => {
     return new Intl.NumberFormat("es-AR", {
@@ -82,6 +89,14 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
   }, []);
 
   const getNextCronDate = useCallback((cronExpression: string, createdAt: string) => {
+    // Crear clave de caché única
+    const cacheKey = `${cronExpression}|${createdAt}`;
+    
+    // Verificar si ya está en caché
+    if (cronDateCache.has(cacheKey)) {
+      return cronDateCache.get(cacheKey)!;
+    }
+    
     try {
       // Parse the cron expression
       const interval = cronParser.parseExpression(cronExpression, {
@@ -106,17 +121,22 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
         day: "2-digit",
       });
 
-      return formatter.format(
+      const result = formatter.format(
         nextDate.setMonth(
           nextDate.getMonth() -
             getMonthDifference(new Date(createdAt), nextDate),
         ),
       );
+      
+      // Guardar en caché
+      cronDateCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       console.error("Invalid cron expression:", error);
+      cronDateCache.set(cacheKey, null);
       return null;
     }
-  }, []);
+  }, [cronDateCache]);
 
   const isBeforeToday = useCallback((date: string) => {
     const formatter = new Intl.DateTimeFormat("es-AR", {
@@ -129,6 +149,13 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
     return date < formatter.format(new Date());
   }, []);
 
+  // Crear mapa de usuarios para búsqueda O(1) en lugar de O(n)
+  const usersMap = useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(user => map.set(user.id, user));
+    return map;
+  }, [users]);
+
   // Memoizar el cálculo de items que es muy pesado
   const items = useMemo(() => {
     if (!groupedJobs || Object.keys(groupedJobs).length === 0) return [];
@@ -138,33 +165,42 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
     });
 
     return Object.entries(groupedJobs).map(([key, value]) => {
-      const total = value.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
       const lastJob = value[value.length - 1];
-      
       if (!lastJob) return null;
 
       const monthLastJob = new Date(lastJob.createdAt).toLocaleDateString("es-AR", {
         month: "long",
       });
       
-      const user = users.find((user) => user.id === Number(key));
-      const allFinished = value.every((job) => job.status === "completed");
+      const user = usersMap.get(Number(key));
+      
+      // Optimización: calcular todo en un solo paso
+      let total = 0;
+      let sumSuccesJobs = 0;
+      let sumFailedOrPendingJobs = 0;
+      let allFinished = true;
+      
+      for (const job of value) {
+        const jobValue = parseFloat(job.valueToBill);
+        total += jobValue;
+        
+        if (job.status === "completed") {
+          sumSuccesJobs += jobValue;
+        } else {
+          sumFailedOrPendingJobs += jobValue;
+          allFinished = false;
+        }
+      }
 
-      const maxDateJob = lodash.maxBy(value, (job) => new Date(job.createdAt));
+      const maxDateJob = lodash.maxBy(value, (job) => new Date(job.createdAt).getTime());
       const active = maxDateJob ? 
         getNextCronDate(maxDateJob.cronExpression, maxDateJob.createdAt)?.includes(currentMonth) : 
         false;
-        
-      const succesJobs = value.filter((job) => job.status === "completed");
-      const failedOrPendingJobs = value.filter((job) => job.status !== "completed");
-      
-      const sumSuccesJobs = succesJobs.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
-      const sumFailedOrPendingJobs = failedOrPendingJobs.reduce((acc, curr) => acc + parseFloat(curr.valueToBill), 0);
       
       return {
         id: key,
         title: `Fact. ${active ? "" : "Hasta"} ${
-          monthLastJob.slice(0, 1).toUpperCase() + monthLastJob.slice(1, 10)
+          monthLastJob.charAt(0).toUpperCase() + monthLastJob.slice(1, 10)
         } (Cuit: ${user?.username}) `,
         old: `${active ? "" : "(Incluye facturas meses anteriores)"}`,
         subtitle: `${user?.real_name}`,
@@ -175,8 +211,8 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
         sumSuccesJobs: formatMoney(sumSuccesJobs.toString()),
         sumFailedOrPendingJobs: formatMoney(sumFailedOrPendingJobs.toString()),
       };
-    }).filter(Boolean);
-  }, [groupedJobs, users, getNextCronDate, formatMoney]);
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [groupedJobs, usersMap, getNextCronDate, formatMoney]);
 
   // Memoizar cálculos de paginación
   const paginationData = useMemo(() => {
@@ -216,20 +252,28 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
         month: "short",
       });
       
-      // Filtrar trabajos actuales y antiguos de manera más eficiente
+      // Optimización: Filtrar trabajos en un solo paso
       const currentJobs: Job[] = [];
       const oldJobs: Job[] = [];
       
-      orderByStatus.forEach((job) => {
-        const nextDate = getNextCronDate(job.cronExpression, job.createdAt);
-        const isCurrentMonth = nextDate?.includes(currentMonth);
-        
-        if (isCurrentMonth || job.status === "failed" || job.status === "pending") {
+      // Limpiar caché al cargar nuevas facturas
+      cronDateCache.clear();
+      
+      for (const job of orderByStatus) {
+        // Solo calcular si es necesario
+        if (job.status === "failed" || job.status === "pending") {
           currentJobs.push(job);
         } else if (job.status === "completed") {
-          oldJobs.push(job);
+          const nextDate = getNextCronDate(job.cronExpression, job.createdAt);
+          const isCurrentMonth = nextDate?.includes(currentMonth);
+          
+          if (isCurrentMonth) {
+            currentJobs.push(job);
+          } else {
+            oldJobs.push(job);
+          }
         }
-      });
+      }
       
       const groupedData = lodash.groupBy(currentJobs, "userId");
       const groupedDataOld = lodash.groupBy(oldJobs, "userId");
@@ -242,21 +286,13 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
     } finally {
       setUpdateCards(false);
     }
-  }, [getNextCronDate, setUpdateCards]);
+  }, [getNextCronDate, setUpdateCards, cronDateCache]);
 
   useEffect(() => {
     if (updateCards) {
       loadFacturas();
     }
   }, [updateCards, loadFacturas]);
-
-  useEffect(() => {
-    if (openDialog) {
-      setCurrentOpenDialog(currentOpenDialog);
-    } else {
-      setCurrentOpenDialog(0);
-    }
-  }, [currentOpenDialog, openDialog]);
 
   const filterByKey = useCallback((key: number) => {
     return groupedJobs[key] || [];
@@ -406,15 +442,10 @@ const CardList: React.FC<Props> = React.memo(({ updateCards, setUpdateCards }) =
                 p: { xs: 2, sm: 3 },
                 border: item.active ? '2px solid #10b981' : '2px solid transparent',
                 borderRadius: 2,
-                transition: 'all 0.3s ease',
                 height: '100%', // Ocupar toda la altura
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between', // Distribuir contenido uniformemente
-                '&:hover': {
-                  backgroundColor: item.active ? "rgba(16, 185, 129, 0.15)" : "rgba(156, 163, 175, 0.15)",
-                  transform: 'translateY(-2px)',
-                }
               }}
             >
               <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>

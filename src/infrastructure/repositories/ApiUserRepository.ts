@@ -1,5 +1,5 @@
 import { UserRepository } from '@src/domain/repositories';
-import { User, CreateUserRequest, UpdateUserRequest } from '@src/domain/entities';
+import { User, UpdateUserRequest } from '@src/domain/entities';
 import { getUsers, getOkFromAfipSdk } from '@src/api/users';
 import { updateUserFacturacion, deleteUserFacturacion } from '@src/api/usersFacturacion';
 
@@ -8,7 +8,7 @@ export class ApiUserRepository implements UserRepository {
     return getUsers(forceRefresh);
   }
 
-  async createUser(user: CreateUserRequest): Promise<User> {
+  async createUser(): Promise<User> {
     // Esta funcionalidad necesitaría implementarse en la API
     throw new Error('Create user not implemented in API');
   }

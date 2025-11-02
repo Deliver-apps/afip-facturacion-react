@@ -4,9 +4,13 @@ import { styled } from '@mui/material/styles';
 import CircleIcon from '@mui/icons-material/Circle';
 
 const HoverCard = styled(Card)({
-  transition: "transform 0.3s ease",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  willChange: "transform",
+  backfaceVisibility: "hidden",
+  transform: "translateZ(0)",
   "&:hover": {
-    transform: "scale(1.05)",
+    transform: "scale3d(1.05, 1.05, 1) translateZ(0)",
+    boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
   },
 });
 
@@ -47,15 +51,10 @@ const JobCard: React.FC<JobCardProps> = React.memo(({ item, onOpenDialog }) => {
           p: { xs: 2, sm: 3 },
           border: item.active ? '2px solid #10b981' : '2px solid transparent',
           borderRadius: 2,
-          transition: 'all 0.3s ease',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          '&:hover': {
-            backgroundColor: item.active ? "rgba(16, 185, 129, 0.15)" : "rgba(156, 163, 175, 0.15)",
-            transform: 'translateY(-2px)',
-          }
         }}
       >
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>

@@ -193,13 +193,9 @@ const BillForm: React.FC<Props> = React.memo(({ setUpdateCards }) => {
       await createFactura(parsedData);
       showSuccessToast("Factura Creada Correctamente", "top-right", 2000);
       
-      // Limpiar formulario
+      // Solo limpiar el usuario para cargas rápidas
+      // El resto de los datos se mantienen para facilitar la carga de múltiples usuarios
       setSelectedUser(null);
-      setFacturasTotales("");
-      setValorMinimo("");
-      setValorMaximo("");
-      setSelectedDateInicio(null);
-      setSelectedDateFin(null);
       setFormError("");
       
       // Actualizar inmediatamente
